@@ -15,7 +15,7 @@ function errorResponse(message: string, code: number = HTTP_STATUS.BAD_REQUEST) 
 function validateAdminKey(req: NextRequest): boolean {
   const clientKey = 
     req.headers.get('x-admin-key') || 
-    req.cookies.get('adminKey')?.value || 
+    req.cookies.get('admin_key')?.value || 
     new URL(req.url).searchParams.get('adminKey')
   
   const validKeys = [ADMIN_UI_KEY, ADMIN_API_KEY].filter(Boolean)

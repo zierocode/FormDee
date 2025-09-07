@@ -37,7 +37,7 @@ export async function adminFetch<T>(path: string, init: RequestInit & { adminKey
   const key = init.adminKey
   let effectiveKey = key
   if (!effectiveKey && typeof window !== 'undefined') {
-    effectiveKey = localStorage.getItem('adminKey') || getCookie('adminKey') || undefined
+    effectiveKey = localStorage.getItem('adminKey') || getCookie('admin_key') || undefined
   }
   if (effectiveKey) headers.set('x-admin-key', effectiveKey)
   // Also include the key as a query param for endpoints where headers may not be visible upstream.

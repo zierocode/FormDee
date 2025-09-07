@@ -15,7 +15,7 @@ function gasUrl(path: string, preferEnv = false) {
 
 export async function POST(req: NextRequest) {
   const url = new URL(req.url)
-  const clientKey = req.headers.get('x-admin-key') || req.cookies.get('adminKey')?.value || url.searchParams.get('adminKey')
+  const clientKey = req.headers.get('x-admin-key') || req.cookies.get('admin_key')?.value || url.searchParams.get('adminKey')
   const validKeys = [ADMIN_UI_KEY, ADMIN_API_KEY].filter(Boolean)
   if (validKeys.length === 0 || !clientKey || !validKeys.includes(clientKey)) return bad('Unauthorized: invalid admin key', 401)
   try {

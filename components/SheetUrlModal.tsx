@@ -34,6 +34,7 @@ export function SheetUrlModal({ isOpen, onClose, onConfirm, initialUrl = '', cur
   const [error, setError] = useState<string | null>(null)
   const [validationStatus, setValidationStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
   const [urlChangeTimer, setUrlChangeTimer] = useState<NodeJS.Timeout | null>(null)
+  const [isValidating, setIsValidating] = useState(false)
 
   // Store the pre-selected sheet name separately
   const [initialSheetName, setInitialSheetName] = useState<string>('')
@@ -43,7 +44,7 @@ export function SheetUrlModal({ isOpen, onClose, onConfirm, initialUrl = '', cur
     if (!input) return null
     try {
       // Clean up the input - remove any trailing /edit, query params, and fragments
-      const cleaned = input.trim()
+      let cleaned = input.trim()
       
       // If it's a full URL, extract the ID
       if (cleaned.includes('docs.google.com/spreadsheets')) {
@@ -51,14 +52,22 @@ export function SheetUrlModal({ isOpen, onClose, onConfirm, initialUrl = '', cur
         if (match) return match[1]
       }
       
-      // If it looks like just an ID (alphanumeric with dashes/underscores)
-      if (/^[a-zA-Z0-9-_]+$/.test(cleaned)) {
-        return cleaned
+      // Handle cases where user pasted partial path like "d/ID/edit?gid=0#gid=0"
+      if (cleaned.startsWith('d/')) {
+        // Extract ID from "d/ID/..." pattern
+        const match = cleaned.match(/^d\/([a-zA-Z0-9-_]+)/)
+        if (match) {
+          cleaned = match[1]
+        }
       }
       
-      // Handle ID with fragment (e.g., id#sheet=Name)
-      if (/^[a-zA-Z0-9-_]+#/.test(cleaned)) {
-        return cleaned.split('#')[0]
+      // Remove any trailing paths, query params, and fragments
+      cleaned = cleaned.split('/')[0].split('?')[0].split('#')[0]
+      
+      // If it looks like just an ID (alphanumeric with dashes/underscores, at least 10 chars)
+      // Google Sheets IDs are typically 44 characters but we'll be flexible
+      if (/^[a-zA-Z0-9-_]{10,}$/.test(cleaned)) {
+        return cleaned
       }
       
       return null
@@ -67,11 +76,20 @@ export function SheetUrlModal({ isOpen, onClose, onConfirm, initialUrl = '', cur
     }
   }
 
-  const validateUrl = useCallback(async (isRefresh = false, preselectedSheetOverride?: string) => {
+  const validateUrl = useCallback(async (isRefresh = false, preselectedSheetOverride?: string, isAutoValidation = false) => {
+    // Prevent concurrent validations
+    if (isValidating) {
+      console.log('Validation already in progress, skipping')
+      return
+    }
+
     const id = extractSheetId(url)
     if (!id) {
-      setError('Please enter a valid Google Sheets URL or ID')
-      setValidationStatus('invalid')
+      // Only show error immediately if this is manual validation
+      if (!isAutoValidation) {
+        setError('Please enter a valid Google Sheets URL or ID')
+        setValidationStatus('invalid')
+      }
       return
     }
 
@@ -83,6 +101,8 @@ export function SheetUrlModal({ isOpen, onClose, onConfirm, initialUrl = '', cur
     // Capture the initial sheet name at the start of validation to preserve it
     // Use the override parameter if provided (for initial load), otherwise use current state
     const preservedInitialSheetName = preselectedSheetOverride || initialSheetName
+    
+    setIsValidating(true)
     
     if (isRefresh) {
       setRefreshing(true)
@@ -217,8 +237,9 @@ Next steps:
     } finally {
       setLoading(false)
       setRefreshing(false)
+      setIsValidating(false)
     }
-  }, [url, initialSheetName, selectedSheet])
+  }, [url, initialSheetName, selectedSheet, isValidating])
 
   useEffect(() => {
     if (isOpen) {
@@ -253,7 +274,7 @@ Next steps:
       // Auto-validate if there's an initial URL
       if (urlToUse && urlToUse.trim()) {
         // Small delay to ensure state is updated, and pass the preselected sheet directly
-        setTimeout(() => validateUrl(false, preselectedSheet), 100)
+        setTimeout(() => validateUrl(false, preselectedSheet, false), 100)
       }
     }
   }, [isOpen, initialUrl, validateUrl])
@@ -263,7 +284,7 @@ Next steps:
       // Clear the current metadata to show loading state
       setSheetsMeta(null)
       setSelectedSheet('')
-      await validateUrl(true)
+      await validateUrl(true, undefined, false)
     }
   }
 
@@ -307,14 +328,22 @@ Next steps:
     // Auto-validate after user stops typing (debounced)
     if (value && value.trim()) {
       const timer = setTimeout(() => {
-        const id = extractSheetId(value)
-        if (id) {
-          validateUrl()
+        // Re-check the URL value at the time of validation (in case it changed)
+        const currentUrl = value.trim()
+        const id = extractSheetId(currentUrl)
+        if (id && currentUrl === url.trim()) {
+          // Only validate if the URL hasn't changed since the timer was set
+          validateUrl(false, undefined, true)
         }
       }, 800) // Wait 800ms after user stops typing
       setUrlChangeTimer(timer)
+    } else {
+      // If the field is empty, clear any validation state
+      setError(null)
+      setValidationStatus('idle')
     }
   }
+
   
   // Clean up timer on unmount
   useEffect(() => {
@@ -366,7 +395,7 @@ Next steps:
             />
             <button
               type="button"
-              onClick={() => validateUrl()}
+              onClick={() => validateUrl(false, undefined, false)}
               disabled={loading || !url.trim()}
               className="btn"
             >
@@ -376,7 +405,7 @@ Next steps:
           {validationStatus === 'valid' && (
             <p className="text-sm text-green-600">✓ Spreadsheet validated successfully</p>
           )}
-          {error && (
+          {error && validationStatus === 'invalid' && (
             <div className="mt-2 rounded-md bg-red-50 border border-red-200 p-3">
               <p className="text-sm text-red-800 whitespace-pre-line">{error}</p>
             </div>
@@ -385,9 +414,12 @@ Next steps:
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="block text-sm font-medium">
-              Select Target Sheet *
-            </label>
+            <div>
+              <label className="block text-sm font-medium">
+                Select Target Sheet *
+              </label>
+              <span className="text-xs text-gray-500">New/Rename sheets may take 2-5 minutes to appear</span>
+            </div>
             {sheetsMeta && (
               <button
                 type="button"
