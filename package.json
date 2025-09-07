@@ -90,5 +90,12 @@
     "rimraf": "^5.0.10",
     "tailwindcss": "3.4.4",
     "typescript": "5.4.5"
+  },
+  "overrides": {
+    "inflight": "npm:@isaacs/inflight@^1.0.6",
+    "glob": "^10.4.5",
+    "rimraf": "^5.0.10",
+    "@humanwhocodes/config-array": "npm:@eslint/config-array@^0.18.0",
+    "@humanwhocodes/object-schema": "npm:@eslint/object-schema@^2.1.4"
   }
 }
