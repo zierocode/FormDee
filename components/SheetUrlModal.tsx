@@ -33,7 +33,6 @@ export function SheetUrlModal({ isOpen, onClose, onConfirm, initialUrl = '', cur
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [validationStatus, setValidationStatus] = useState<'idle' | 'valid' | 'invalid'>('idle')
-  const [urlChangeTimer, setUrlChangeTimer] = useState<NodeJS.Timeout | null>(null)
   const [isValidating, setIsValidating] = useState(false)
 
   // Store the pre-selected sheet name separately
@@ -76,7 +75,7 @@ export function SheetUrlModal({ isOpen, onClose, onConfirm, initialUrl = '', cur
     }
   }
 
-  const validateUrl = useCallback(async (isRefresh = false, preselectedSheetOverride?: string, isAutoValidation = false) => {
+  const validateUrl = useCallback(async (isRefresh = false, preselectedSheetOverride?: string) => {
     // Prevent concurrent validations
     if (isValidating) {
       console.log('Validation already in progress, skipping')
@@ -85,11 +84,8 @@ export function SheetUrlModal({ isOpen, onClose, onConfirm, initialUrl = '', cur
 
     const id = extractSheetId(url)
     if (!id) {
-      // Only show error immediately if this is manual validation
-      if (!isAutoValidation) {
-        setError('Please enter a valid Google Sheets URL or ID')
-        setValidationStatus('invalid')
-      }
+      setError('Please enter a valid Google Sheets URL or ID')
+      setValidationStatus('invalid')
       return
     }
 
@@ -274,17 +270,18 @@ Next steps:
       // Auto-validate if there's an initial URL
       if (urlToUse && urlToUse.trim()) {
         // Small delay to ensure state is updated, and pass the preselected sheet directly
-        setTimeout(() => validateUrl(false, preselectedSheet, false), 100)
+        setTimeout(() => validateUrl(false, preselectedSheet), 100)
       }
     }
-  }, [isOpen, initialUrl, validateUrl])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, initialUrl])
 
   async function refreshSheets() {
     if (sheetsMeta) {
       // Clear the current metadata to show loading state
       setSheetsMeta(null)
       setSelectedSheet('')
-      await validateUrl(true, undefined, false)
+      await validateUrl(true)
     }
   }
 
@@ -319,41 +316,8 @@ Next steps:
     }
     
     setError(null)
-    
-    // Clear existing timer
-    if (urlChangeTimer) {
-      clearTimeout(urlChangeTimer)
-    }
-    
-    // Auto-validate after user stops typing (debounced)
-    if (value && value.trim()) {
-      const timer = setTimeout(() => {
-        // Re-check the URL value at the time of validation (in case it changed)
-        const currentUrl = value.trim()
-        const id = extractSheetId(currentUrl)
-        if (id && currentUrl === url.trim()) {
-          // Only validate if the URL hasn't changed since the timer was set
-          validateUrl(false, undefined, true)
-        }
-      }, 800) // Wait 800ms after user stops typing
-      setUrlChangeTimer(timer)
-    } else {
-      // If the field is empty, clear any validation state
-      setError(null)
-      setValidationStatus('idle')
-    }
   }
 
-  
-  // Clean up timer on unmount
-  useEffect(() => {
-    return () => {
-      if (urlChangeTimer) {
-        clearTimeout(urlChangeTimer)
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [urlChangeTimer])
 
   function checkStructureMismatch(sheet: SheetMeta['sheets'][0] | undefined): { hasContent: boolean; structureMatches: boolean } {
     if (!sheet) return { hasContent: false, structureMatches: true }
@@ -395,7 +359,7 @@ Next steps:
             />
             <button
               type="button"
-              onClick={() => validateUrl(false, undefined, false)}
+              onClick={() => validateUrl()}
               disabled={loading || !url.trim()}
               className="btn"
             >
