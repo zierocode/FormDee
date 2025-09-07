@@ -814,16 +814,17 @@ export function BuilderForm({ initial, mode, refKeyHint, duplicateFrom }: Props)
                   </div>
                   
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Step 2: Set Permissions</h3>
+                    <h3 className="font-semibold text-gray-900 mb-2">Step 2: Set Public Permissions (Required)</h3>
                     <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600">
                       <li>Click the <strong>"Share"</strong> button in the top-right corner</li>
-                      <li>Under "General access", select <strong>"Anyone with the link"</strong></li>
-                      <li>Set permission to <strong>"Editor"</strong></li>
+                      <li>Under "General access", click the dropdown</li>
+                      <li>Select <strong>"Anyone with the link"</strong></li>
+                      <li>Change permission from "Viewer" to <strong>"Editor"</strong> (this enables write access)</li>
                       <li>Click <strong>"Done"</strong></li>
                     </ol>
                     <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded">
                       <p className="text-xs text-yellow-800">
-                        <strong>Note:</strong> Editor permission is required for the form to write responses to your sheet.
+                        <strong>⚠️ Important:</strong> You MUST set the permission to <strong>"Anyone with the link"</strong> can <strong>"Edit"</strong> (public write access). This allows the form to save responses to your sheet.
                       </p>
                     </div>
                   </div>
@@ -976,17 +977,18 @@ export function BuilderForm({ initial, mode, refKeyHint, duplicateFrom }: Props)
                   </div>
                   
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Step 2: Set Folder Permissions</h3>
+                    <h3 className="font-semibold text-gray-900 mb-2">Step 2: Set Public Folder Permissions (Required)</h3>
                     <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600">
                       <li>Right-click on the folder</li>
                       <li>Select <strong>"Share"</strong></li>
-                      <li>Under "General access", select <strong>"Anyone with the link"</strong></li>
-                      <li>Set permission to <strong>"Editor"</strong></li>
+                      <li>Under "General access", click the dropdown</li>
+                      <li>Select <strong>"Anyone with the link"</strong></li>
+                      <li>Change permission from "Viewer" to <strong>"Editor"</strong> (this enables upload access)</li>
                       <li>Click <strong>"Done"</strong></li>
                     </ol>
                     <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded">
                       <p className="text-xs text-yellow-800">
-                        <strong>Important:</strong> Editor permission is required for the form to upload files to your folder.
+                        <strong>⚠️ Important:</strong> You MUST set the permission to <strong>"Anyone with the link"</strong> can <strong>"Edit"</strong> (public write access). This allows the form to upload files to your folder.
                       </p>
                     </div>
                   </div>

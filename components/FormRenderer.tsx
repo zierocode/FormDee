@@ -255,11 +255,19 @@ function OptionsControl({ field, value, onChange }: { field: FormField; value: a
   }
   if (field.type === 'radio') {
     return (
-      <div role="radiogroup" aria-label={field.label} className="flex flex-col gap-1">
+      <div role="radiogroup" aria-label={field.label} className="space-y-2 mt-2">
         {(field.options ?? []).map((opt) => (
-          <label key={opt} className="inline-flex items-center gap-2 text-sm">
-            <input type="radio" name={field.key} value={opt} checked={value === opt} onChange={() => onChange(opt)} required={field.required} />
-            {opt}
+          <label key={opt} className="flex items-start gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors">
+            <input 
+              type="radio" 
+              name={field.key} 
+              value={opt} 
+              checked={value === opt} 
+              onChange={() => onChange(opt)} 
+              required={field.required}
+              className="mt-0.5 h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 flex-shrink-0"
+            />
+            <span className="text-sm text-gray-700 leading-relaxed">{opt}</span>
           </label>
         ))}
       </div>
@@ -273,11 +281,16 @@ function OptionsControl({ field, value, onChange }: { field: FormField; value: a
       else onChange([...selected, opt])
     }
     return (
-      <div className="flex flex-col gap-1">
+      <div className="space-y-2 mt-2">
         {(field.options ?? []).map((opt) => (
-          <label key={opt} className="inline-flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={selected.includes(opt)} onChange={() => toggle(opt)} />
-            {opt}
+          <label key={opt} className="flex items-start gap-3 cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors">
+            <input 
+              type="checkbox" 
+              checked={selected.includes(opt)} 
+              onChange={() => toggle(opt)}
+              className="mt-0.5 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 flex-shrink-0"
+            />
+            <span className="text-sm text-gray-700 leading-relaxed">{opt}</span>
           </label>
         ))}
       </div>
