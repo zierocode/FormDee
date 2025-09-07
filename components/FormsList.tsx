@@ -223,6 +223,7 @@ export function FormsList() {
     if (didInit.current) return
     didInit.current = true
     load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Infinite scroll detection
@@ -234,6 +235,7 @@ export function FormsList() {
 
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayedItems.length, filteredItems.length, isLoadingMore])
   return (
     <div className="space-y-4">

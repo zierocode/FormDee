@@ -222,6 +222,7 @@ export function BuilderForm({ initial, mode, refKeyHint, duplicateFrom }: Props)
     if (mode !== 'edit' || initial || !refKeyHint || didFallbackFetch.current) return
     didFallbackFetch.current = true
     doFallbackLoad()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, initial, refKeyHint])
 
   // Handle duplicate functionality

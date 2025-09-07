@@ -1,5 +1,5 @@
 "use client"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { Select } from '@/components/ui/Select'
 import { adminFetch } from '@/lib/api'
@@ -38,44 +38,6 @@ export function SheetUrlModal({ isOpen, onClose, onConfirm, initialUrl = '', cur
   // Store the pre-selected sheet name separately
   const [initialSheetName, setInitialSheetName] = useState<string>('')
   const [isProgrammaticUrlChange, setIsProgrammaticUrlChange] = useState<boolean>(false)
-  
-  useEffect(() => {
-    if (isOpen) {
-      console.log('Modal opening with initialUrl:', initialUrl)
-      // Parse the initial URL to handle the #sheet= format
-      let urlToUse = initialUrl
-      let preselectedSheet = ''
-      
-      if (initialUrl && initialUrl.includes('#sheet=')) {
-        // Extract the sheet name from the fragment
-        const parts = initialUrl.split('#sheet=')
-        urlToUse = parts[0] // Just the ID part
-        if (parts[1]) {
-          preselectedSheet = decodeURIComponent(parts[1])
-        }
-        console.log('Parsed URL parts:', { urlToUse, preselectedSheet })
-      }
-      
-      setIsProgrammaticUrlChange(true)
-      setUrl(urlToUse)
-      setSheetsMeta(null)
-      setInitialSheetName(preselectedSheet) // Store for later use
-      setSelectedSheet(preselectedSheet)
-      setError(null)
-      setValidationStatus('idle')
-      
-      console.log('Set initial sheet name to:', preselectedSheet)
-      
-      // Reset the flag after a brief delay to allow the input to update
-      setTimeout(() => setIsProgrammaticUrlChange(false), 50)
-      
-      // Auto-validate if there's an initial URL
-      if (urlToUse && urlToUse.trim()) {
-        // Small delay to ensure state is updated, and pass the preselected sheet directly
-        setTimeout(() => validateUrl(false, preselectedSheet), 100)
-      }
-    }
-  }, [isOpen, initialUrl, validateUrl])
 
   function extractSheetId(input: string): string | null {
     if (!input) return null
@@ -105,7 +67,7 @@ export function SheetUrlModal({ isOpen, onClose, onConfirm, initialUrl = '', cur
     }
   }
 
-  async function validateUrl(isRefresh = false, preselectedSheetOverride?: string) {
+  const validateUrl = useCallback(async (isRefresh = false, preselectedSheetOverride?: string) => {
     const id = extractSheetId(url)
     if (!id) {
       setError('Please enter a valid Google Sheets URL or ID')
@@ -256,7 +218,45 @@ Next steps:
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [url, initialSheetName, selectedSheet])
+
+  useEffect(() => {
+    if (isOpen) {
+      console.log('Modal opening with initialUrl:', initialUrl)
+      // Parse the initial URL to handle the #sheet= format
+      let urlToUse = initialUrl
+      let preselectedSheet = ''
+      
+      if (initialUrl && initialUrl.includes('#sheet=')) {
+        // Extract the sheet name from the fragment
+        const parts = initialUrl.split('#sheet=')
+        urlToUse = parts[0] // Just the ID part
+        if (parts[1]) {
+          preselectedSheet = decodeURIComponent(parts[1])
+        }
+        console.log('Parsed URL parts:', { urlToUse, preselectedSheet })
+      }
+      
+      setIsProgrammaticUrlChange(true)
+      setUrl(urlToUse)
+      setSheetsMeta(null)
+      setInitialSheetName(preselectedSheet) // Store for later use
+      setSelectedSheet(preselectedSheet)
+      setError(null)
+      setValidationStatus('idle')
+      
+      console.log('Set initial sheet name to:', preselectedSheet)
+      
+      // Reset the flag after a brief delay to allow the input to update
+      setTimeout(() => setIsProgrammaticUrlChange(false), 50)
+      
+      // Auto-validate if there's an initial URL
+      if (urlToUse && urlToUse.trim()) {
+        // Small delay to ensure state is updated, and pass the preselected sheet directly
+        setTimeout(() => validateUrl(false, preselectedSheet), 100)
+      }
+    }
+  }, [isOpen, initialUrl, validateUrl])
 
   async function refreshSheets() {
     if (sheetsMeta) {
@@ -323,6 +323,7 @@ Next steps:
         clearTimeout(urlChangeTimer)
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlChangeTimer])
 
   function checkStructureMismatch(sheet: SheetMeta['sheets'][0] | undefined): { hasContent: boolean; structureMatches: boolean } {

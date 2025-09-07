@@ -53,7 +53,6 @@ async function handlePost(req: NextRequest) {
     // Get IP and User-Agent
     const ip = req.headers.get('x-forwarded-for') || 
                req.headers.get('x-real-ip') || 
-               req.ip || 
                'unknown'
     const userAgent = req.headers.get('user-agent') || 'unknown'
     

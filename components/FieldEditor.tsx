@@ -242,6 +242,7 @@ function OptionsEditor({ value, onChange }: { value: string[]; onChange: (v: str
         .map((s) => s.trim())
         .filter(Boolean)
     )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text])
   return (
     <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder="One option per line" className="w-full" />
@@ -267,6 +268,7 @@ function FileTypesEditor({ value, onChange }: { value: string[]; onChange: (v: s
     if (text !== currentValue) {
       onChange(newValue)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text])
   
   return (

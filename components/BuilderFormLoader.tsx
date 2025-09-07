@@ -43,6 +43,7 @@ export function BuilderFormLoader({ refKey }: { refKey: string }) {
     return () => {
       if (controllerRef.current) controllerRef.current.abort()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refKey])
 
   if (loading) {
