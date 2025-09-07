@@ -1,0 +1,60 @@
+{
+  "baseUrl": "http://localhost:3000",
+  "forms": [
+    {
+      "refKey": "example",
+      "name": "Comprehensive Validation Test Form",
+      "description": "Production form safe for testing (read-only test)",
+      "fields": [
+        {
+          "key": "email",
+          "type": "text",
+          "label": "Email Address",
+          "testValue": "e2e-test-{{timestamp}}@example.com",
+          "required": true
+        },
+        {
+          "key": "name",
+          "type": "text",
+          "label": "Name",
+          "testValue": "E2E Test User {{timestamp}}",
+          "required": false
+        },
+        {
+          "key": "age",
+          "type": "number",
+          "label": "Age (Years)",
+          "testValue": "25",
+          "required": true
+        },
+        {
+          "key": "phone",
+          "type": "text",
+          "label": "Phone Number",
+          "testValue": "(555) 123-4567",
+          "required": false
+        }
+      ],
+      "expectedSuccess": true
+    },
+    {
+      "refKey": "non-existent-form",
+      "name": "Non-Existent Form",
+      "description": "This form should fail to load",
+      "fields": [],
+      "expectedSuccess": false,
+      "expectedError": "Form not found"
+    }
+  ],
+  "testSettings": {
+    "headless": false,
+    "slowMo": 50,
+    "timeout": 30000,
+    "retryAttempts": 2,
+    "screenshots": {
+      "onFailure": true,
+      "onSuccess": false,
+      "directory": "./tests/screenshots"
+    }
+  }
+}
