@@ -21,9 +21,10 @@ async function getFormForMetadata(refKey: string) {
   return { ok: false }
 }
 
-export async function generateMetadata({ params }: { params: { refKey: string } }) {
+export async function generateMetadata({ params }: { params: Promise<{ refKey: string }> }) {
+  const resolvedParams = await params
   try {
-    const form = await getFormForMetadata(params.refKey)
+    const form = await getFormForMetadata(resolvedParams.refKey)
     if (form.ok && form.data) {
       const formTitle = form.data.title || 'Form'
       return {
@@ -42,7 +43,8 @@ export async function generateMetadata({ params }: { params: { refKey: string } 
   }
 }
 
-export default function PublicFormPage({ params }: { params: { refKey: string } }) {
-  return <FormRenderer refKey={params.refKey} />
+export default async function PublicFormPage({ params }: { params: Promise<{ refKey: string }> }) {
+  const resolvedParams = await params
+  return <FormRenderer refKey={resolvedParams.refKey} />
 }
 

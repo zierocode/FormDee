@@ -4,9 +4,10 @@ import { FormConfig } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
-export async function generateMetadata({ params }: { params: { refKey: string } }) {
+export async function generateMetadata({ params }: { params: Promise<{ refKey: string }> }) {
+  const resolvedParams = await params
   return {
-    title: `Edit ${params.refKey} - FormDee - ฟอร์มดี`,
+    title: `Edit ${resolvedParams.refKey} - FormDee - ฟอร์มดี`,
     description: 'Build and manage forms with FormDee - สร้างและจัดการฟอร์มด้วย FormDee - ฟอร์มดี'
   }
 }
@@ -36,8 +37,9 @@ async function getForm(refKey: string) {
   }
 }
 
-export default async function EditFormPage({ params }: { params: { refKey: string } }) {
-  const data = await getForm(params.refKey)
+export default async function EditFormPage({ params }: { params: Promise<{ refKey: string }> }) {
+  const resolvedParams = await params
+  const data = await getForm(resolvedParams.refKey)
   return (
     <AdminKeyGate>
       <div className="space-y-4">
@@ -47,7 +49,7 @@ export default async function EditFormPage({ params }: { params: { refKey: strin
             <h1 className="text-2xl font-semibold">Edit Form</h1>
           </div>
         </div>
-        <BuilderForm mode="edit" refKeyHint={params.refKey} initial={data.ok ? data.data : undefined} />
+        <BuilderForm mode="edit" refKeyHint={resolvedParams.refKey} initial={data.ok ? data.data : undefined} />
       </div>
     </AdminKeyGate>
   )
