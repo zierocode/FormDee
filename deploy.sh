@@ -8,6 +8,10 @@ PM2_APP=formdee
 echo "📂 Switching to project directory..."
 cd $PROJECT_DIR || { echo "❌ Cannot cd to $PROJECT_DIR"; exit 1; }
 
+echo "🧹 Clearing build caches..."
+rm -rf .next
+rm -f tsconfig.tsbuildinfo
+
 echo "📥 Pulling latest code from Git ($BRANCH)..."
 git fetch origin
 git reset --hard origin/$BRANCH
