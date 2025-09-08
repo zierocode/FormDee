@@ -1,7 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from './AuthProvider'
 
 interface Settings {
@@ -10,7 +9,6 @@ interface Settings {
 }
 
 export function SettingsClient() {
-  const router = useRouter()
   const { adminKey } = useAuth()
   const [settings, setSettings] = useState<Settings>({
     aiModel: 'gpt-5-mini',
@@ -26,16 +24,7 @@ export function SettingsClient() {
     { value: 'gpt-5-mini', label: 'GPT-5-mini' }
   ]
 
-  useEffect(() => {
-    if (adminKey) {
-      fetchSettings()
-    } else {
-      // If no adminKey yet, just set loading to false
-      setLoading(false)
-    }
-  }, [adminKey])
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     if (!adminKey) {
       setLoading(false)
       return
@@ -60,7 +49,16 @@ export function SettingsClient() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [adminKey])
+
+  useEffect(() => {
+    if (adminKey) {
+      fetchSettings()
+    } else {
+      // If no adminKey yet, just set loading to false
+      setLoading(false)
+    }
+  }, [adminKey, fetchSettings])
 
   const handleSave = async () => {
     if (!settings.aiApiKey) {
