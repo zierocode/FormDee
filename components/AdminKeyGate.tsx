@@ -9,7 +9,7 @@ export function AdminKeyGate({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check authentication status and get admin key from cookie
+    // Check authentication status and get admin key from API
     const checkAuth = async () => {
       try {
         const response = await fetch('/api/auth/check')
@@ -17,15 +17,13 @@ export function AdminKeyGate({ children }: { children: ReactNode }) {
           // Not authenticated, redirect to login
           router.push('/login?returnUrl=' + encodeURIComponent(window.location.pathname))
         } else {
-          // Get admin key from cookies - try both cookie names for compatibility
-          const cookies = document.cookie.split(';')
-          let adminKeyCookie = cookies.find(c => c.trim().startsWith('adminKey='))
-          if (!adminKeyCookie) {
-            adminKeyCookie = cookies.find(c => c.trim().startsWith('admin_key='))
-          }
-          if (adminKeyCookie) {
-            const key = adminKeyCookie.split('=')[1]
-            setAdminKey(key)
+          // Get admin key from API response
+          const data = await response.json()
+          if (data.adminKey) {
+            console.log('Found admin key from API:', data.adminKey.substring(0, 10) + '...')
+            setAdminKey(data.adminKey)
+          } else {
+            console.warn('No admin key in API response')
           }
           setLoading(false)
         }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { isAuthenticated } from '@/lib/auth';
+import { isAuthenticated, getAdminKeyCookie } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,7 +8,11 @@ export async function GET() {
     const authenticated = await isAuthenticated();
     
     if (authenticated) {
-      return NextResponse.json({ authenticated: true });
+      const adminKey = await getAdminKeyCookie();
+      return NextResponse.json({ 
+        authenticated: true,
+        adminKey: adminKey 
+      });
     } else {
       return NextResponse.json(
         { authenticated: false },

@@ -19,6 +19,7 @@ export function SettingsClient() {
   const [testing, setTesting] = useState(false)
   const [message, setMessage] = useState('')
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [initialFetch, setInitialFetch] = useState(false)
 
   const aiModels = [
     { value: 'gpt-5-mini', label: 'GPT-5-mini' }
@@ -26,9 +27,12 @@ export function SettingsClient() {
 
   const fetchSettings = useCallback(async () => {
     if (!adminKey) {
-      setLoading(false)
+      console.log('No adminKey available yet, waiting...')
       return
     }
+    
+    console.log('Fetching settings with adminKey:', adminKey.substring(0, 10) + '...')
+    setLoading(true)
     
     try {
       const response = await fetch('/api/settings', {
@@ -37,28 +41,47 @@ export function SettingsClient() {
         }
       })
 
+      console.log('Settings API response status:', response.status)
+
       if (response.ok) {
         const data = await response.json()
+        console.log('Settings data received:', data)
         setSettings({
           aiModel: data.aiModel || 'gpt-5-mini',
           aiApiKey: data.aiApiKey || ''
         })
+        setMessage('Settings loaded successfully')
+        setTimeout(() => setMessage(''), 2000)
+      } else {
+        const errorData = await response.json()
+        console.error('Settings API error:', errorData)
+        if (response.status === 404) {
+          // Settings not found, use defaults
+          console.log('No settings found, using defaults')
+        } else {
+          setMessage(`Error loading settings: ${errorData.error || 'Unknown error'}`)
+        }
       }
     } catch (error) {
       console.error('Error fetching settings:', error)
+      setMessage('Error loading settings')
     } finally {
       setLoading(false)
+      setInitialFetch(true)
     }
   }, [adminKey])
 
   useEffect(() => {
-    if (adminKey) {
+    // Only fetch once when adminKey becomes available and we haven't fetched yet
+    if (adminKey && adminKey.trim() !== '' && !initialFetch) {
+      console.log('AdminKey available, fetching settings...')
       fetchSettings()
-    } else {
-      // If no adminKey yet, just set loading to false
-      setLoading(false)
+    } else if (!adminKey || adminKey.trim() === '') {
+      // If no adminKey yet, show loading
+      console.log('Waiting for adminKey...')
+      setLoading(true)
     }
-  }, [adminKey, fetchSettings])
+  }, [adminKey, fetchSettings, initialFetch])
 
   const handleSave = async () => {
     if (!settings.aiApiKey) {
