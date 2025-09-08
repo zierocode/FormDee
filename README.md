@@ -1,17 +1,26 @@
-# FormDee 🚀 - Dynamic Form Builder
+# FormDee 🚀 - Dynamic Form Builder v1.1
 
+[![Version](https://img.shields.io/badge/Version-1.1.0-brightgreen)](https://github.com/zierocode/FormDee)
 [![Next.js](https://img.shields.io/badge/Next.js-14.2-black)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.4-blue)](https://www.typescriptlang.org/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC)](https://tailwindcss.com/)
 [![Status](https://img.shields.io/badge/Status-Production_Complete-success)](https://github.com/zierocode/FormDee)
 
-**Complete production-ready form builder with Google Sheets integration, authentication system, file uploads, and comprehensive 4-tier testing suite. Enterprise-grade with zero database requirements!**
+**Complete production-ready form builder with AI-powered generation, Google Sheets integration, authentication system, file uploads, and comprehensive 4-tier testing suite. Enterprise-grade with zero database requirements!**
+
+## 🆕 What's New in v1.1
+- **AI-Powered Form Generation**: Create forms instantly using natural language prompts
+- **Settings Management**: Configure AI models and API keys through intuitive UI
+- **Smart Testing**: Validate AI configuration before saving
+- **Generic AI Support**: Works with various AI providers, not limited to OpenAI
 
 ## 🌟 Key Features
 
 ### 🎯 Core Functionality
+- **AI-Powered Form Creation**: Generate complete forms using natural language descriptions
 - **Advanced Form Builder**: Drag-and-drop interface with real-time column mapping
 - **Authentication System**: Secure admin login with cookie-based sessions
+- **Settings Management**: Configure AI models and API keys with validation
 - **Multiple Field Types**: Text, Email, Number, Date, Textarea, Select, Radio, Checkbox, File Upload
 - **Advanced Validation**: Required fields, patterns, min/max values, file type restrictions
 - **Google Sheets Integration**: Complete CRUD with automatic response collection

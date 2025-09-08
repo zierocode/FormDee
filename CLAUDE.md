@@ -1,16 +1,18 @@
-# FormDee - Dynamic Form Builder
+# FormDee - Dynamic Form Builder v1.1
 
 ## 🚀 Production Status - Complete & Deployed
-This project is **production-ready** and **feature-complete** with comprehensive testing and deployment tools. All major features implemented:
+This project is **production-ready** and **feature-complete** with AI-powered form generation, comprehensive testing and deployment tools. All major features implemented:
 
-### ✅ Core Features Complete
+### ✅ Core Features Complete (v1.1)
+- ✅ **AI-Powered Form Generation** - Create forms using natural language prompts
+- ✅ **Settings Management** - Configure AI models and API keys with validation
 - ✅ **Advanced Form Builder** - Drag-and-drop with real-time column mapping
 - ✅ **Google Sheets Integration** - Full CRUD with automatic response collection
 - ✅ **File Upload System** - Google Drive integration with secure handling
 - ✅ **Authentication System** - Cookie-based admin login with session management
 - ✅ **Comprehensive Testing** - 4-tier test suite (API + E2E) with automatic cleanup
 - ✅ **Production Deployment** - Docker, Vercel, and manual deployment options
-- ✅ **Performance Optimized** - 87.3 kB shared bundle with caching strategies
+- ✅ **Performance Optimized** - Minimal bundle size with caching strategies
 - ✅ **Enterprise Security** - Multi-layer protection with admin authentication
 - ✅ **International Support** - Unicode handling and multi-language forms
 - ✅ **Data Migration Tools** - Smart handling of form structure changes
