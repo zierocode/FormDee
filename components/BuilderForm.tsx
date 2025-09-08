@@ -14,9 +14,10 @@ type Props = {
   mode: 'create' | 'edit'
   refKeyHint?: string // for edit page to show ref while loading
   duplicateFrom?: string // for duplicate mode to load template
+  aiGeneratedForm?: any // for AI-generated forms
 }
 
-export function BuilderForm({ initial, mode, refKeyHint, duplicateFrom }: Props) {
+export function BuilderForm({ initial, mode, refKeyHint, duplicateFrom, aiGeneratedForm }: Props) {
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [refKey, setRefKey] = useState(initial?.refKey ?? refKeyHint ?? '')
@@ -156,6 +157,19 @@ export function BuilderForm({ initial, mode, refKeyHint, duplicateFrom }: Props)
     // Don't reset form data in duplicate mode - let doDuplicateLoad handle it
     if (duplicateFrom) return
     
+    // Handle AI-generated form
+    if (aiGeneratedForm) {
+      setTitle(aiGeneratedForm.title || '')
+      setDescription(aiGeneratedForm.description || '')
+      setRefKey('') // User needs to provide a unique refKey
+      setResponseSheetUrl('') // User needs to configure sheet
+      setSlackWebhookUrl('')
+      setUploadFolderUrl('')
+      setFields(aiGeneratedForm.fields || [])
+      setLoadingInitial(false)
+      return
+    }
+    
     setTitle(initial?.title ?? '')
     setDescription(initial?.description ?? '')
     setRefKey(initial?.refKey ?? refKeyHint ?? '')
@@ -174,7 +188,7 @@ export function BuilderForm({ initial, mode, refKeyHint, duplicateFrom }: Props)
     }
     // For edit mode, we'll set loadingInitial to false when sheets metadata is ready
     // This is handled in the sheets metadata useEffect
-  }, [initial, refKeyHint, duplicateFrom, mode])
+  }, [initial, refKeyHint, duplicateFrom, mode, aiGeneratedForm])
 
   // Auto-load sheet metadata on page load and whenever the URL/id changes
   useEffect(() => {

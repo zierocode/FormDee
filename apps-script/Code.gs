@@ -170,7 +170,9 @@ function route(e, method) {
         'POST /forms_migrate': 'Migrate form data (admin)',
         'POST /forms_update_headers': 'Update sheet headers for field reordering (admin)',
         'GET /data_count': 'Check existing data count (admin)',
-        'POST /upload_file': 'Upload file to Google Drive (public)'
+        'POST /upload_file': 'Upload file to Google Drive (public)',
+        'GET /settings': 'Get settings (admin)',
+        'POST /settings': 'Update settings (admin)'
       }
     }),
     'forms': () => method === 'GET' ? handleGetForms(params) : handlePostForms(params, body),
@@ -182,7 +184,8 @@ function route(e, method) {
     'responses_delete': () => handleDeleteResponses(params), // Test cleanup
     'sheets_meta': () => handleGetSheetsMeta(params),     // Sheet info
     'submit': () => handleSubmit(params, body),           // Form submissions
-    'upload_file': () => handleUploadFile(params, body)   // File uploads
+    'upload_file': () => handleUploadFile(params, body),  // File uploads
+    'settings': () => method === 'GET' ? handleGetSettings(params) : handleUpdateSettings(params, body) // Settings
   }
   
   try {
@@ -323,6 +326,114 @@ function getMasterSheet() {
   }
   
   return sheet
+}
+
+/**
+ * Get the settings sheet from master spreadsheet
+ * Creates the sheet if it doesn't exist
+ * 
+ * @returns {GoogleAppsScript.Spreadsheet.Sheet} The Settings sheet
+ */
+function getSettingsSheet() {
+  const id = getMasterSheetId()
+  if (!id) throw new Error('Unable to determine master sheet ID')
+  
+  const spreadsheet = SpreadsheetApp.openById(id)
+  let sheet = spreadsheet.getSheetByName('Settings')
+  
+  if (!sheet) {
+    // Create Settings sheet with headers
+    sheet = spreadsheet.insertSheet('Settings')
+    const headers = ['key', 'value', 'updatedAt']
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+    
+    // Add default settings
+    const defaultSettings = [
+      ['aiModel', 'gpt-5-mini', new Date().toISOString()],
+      ['aiApiKey', '', new Date().toISOString()]
+    ]
+    sheet.getRange(2, 1, defaultSettings.length, 3).setValues(defaultSettings)
+  }
+  
+  return sheet
+}
+
+// =============================================================================
+// SETTINGS HANDLERS
+// =============================================================================
+
+/**
+ * Get settings from Settings sheet (admin only)
+ * @param {Object} params - Request parameters containing apiKey
+ * @returns {GoogleAppsScript.Content.TextOutput} JSON response with settings
+ */
+function handleGetSettings(params) {
+  assertAdmin(params)
+  
+  try {
+    const sheet = getSettingsSheet()
+    const data = sheet.getDataRange().getValues()
+    
+    const settings = {}
+    // Skip header row
+    for (let i = 1; i < data.length; i++) {
+      const [key, value] = data[i]
+      if (key) {
+        settings[key] = value
+      }
+    }
+    
+    return jsonOk(settings)
+  } catch (error) {
+    console.error('Error getting settings:', error)
+    return jsonError('Failed to get settings: ' + error.toString(), 500)
+  }
+}
+
+/**
+ * Update settings in Settings sheet (admin only)
+ * @param {Object} params - Request parameters containing apiKey
+ * @param {Object} body - Settings to update
+ * @returns {GoogleAppsScript.Content.TextOutput} JSON response
+ */
+function handleUpdateSettings(params, body) {
+  assertAdmin(params)
+  
+  if (!body) {
+    return jsonError('Request body required', 400)
+  }
+  
+  try {
+    const sheet = getSettingsSheet()
+    const data = sheet.getDataRange().getValues()
+    const now = new Date().toISOString()
+    
+    // Update each setting
+    Object.keys(body).forEach(key => {
+      let found = false
+      
+      // Look for existing key
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] === key) {
+          // Update existing setting
+          sheet.getRange(i + 1, 2, 1, 2).setValues([[body[key], now]])
+          found = true
+          break
+        }
+      }
+      
+      // Add new setting if not found
+      if (!found) {
+        const lastRow = sheet.getLastRow()
+        sheet.getRange(lastRow + 1, 1, 1, 3).setValues([[key, body[key], now]])
+      }
+    })
+    
+    return jsonOk({ message: 'Settings updated successfully', settings: body })
+  } catch (error) {
+    console.error('Error updating settings:', error)
+    return jsonError('Failed to update settings: ' + error.toString(), 500)
+  }
 }
 
 // =============================================================================

@@ -46,7 +46,7 @@ export function ConditionalHeader() {
   return (
     <header className="border-b bg-white">
       <div className="container flex items-center justify-between py-4">
-        <a href="/" className="flex items-center gap-2">
+        <a href="/builder" className="flex items-center gap-2">
           <Image 
             src="/FormDee-logo.png" 
             alt="FormDee Logo" 
@@ -57,12 +57,20 @@ export function ConditionalHeader() {
           <span className="text-lg font-semibold">FormDee - ฟอร์มดี</span>
         </a>
         {isAuthenticated && (
-          <button
-            className="btn-secondary text-sm"
-            onClick={handleLogout}
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              className="btn-secondary text-sm"
+              onClick={() => router.push('/settings')}
+            >
+              Settings
+            </button>
+            <button
+              className="btn-secondary text-sm"
+              onClick={handleLogout}
+            >
+              Logout
+            </button>
+          </div>
         )}
       </div>
     </header>

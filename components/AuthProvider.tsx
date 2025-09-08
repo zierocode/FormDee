@@ -7,13 +7,14 @@ import { toast } from 'react-hot-toast';
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
+  adminKey: string;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children, adminKey }: { children: React.ReactNode; adminKey: string }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
@@ -51,7 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, logout, checkAuth }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, adminKey, logout, checkAuth }}>
       {children}
     </AuthContext.Provider>
   );
