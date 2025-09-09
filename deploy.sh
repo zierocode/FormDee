@@ -17,10 +17,13 @@ git fetch origin
 git reset --hard origin/$BRANCH
 
 echo "📦 Installing dependencies..."
-npm install --production
+npm ci
 
 echo "🏗 Building production build..."
 npm run build:production
+
+echo "🧹 Optimizing for production runtime..."
+npm prune --production
 
 echo "🔄 Reloading PM2 app: $PM2_APP..."
 pm2 reload $PM2_APP || pm2 start npm --name "$PM2_APP" -- run start
