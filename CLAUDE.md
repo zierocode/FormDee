@@ -1,14 +1,16 @@
-# FormDee - Dynamic Form Builder v1.1
+# FormDee - Dynamic Form Builder v1.2
 
 ## 🚀 Production Status - Complete & Deployed
+
 This project is **production-ready** and **feature-complete** with AI-powered form generation, comprehensive testing and deployment tools. All major features implemented:
 
 ### ✅ Core Features Complete (v1.1)
+
 - ✅ **AI-Powered Form Generation** - Create forms using natural language prompts
 - ✅ **Settings Management** - Configure AI models and API keys with validation
 - ✅ **Advanced Form Builder** - Drag-and-drop with real-time column mapping
-- ✅ **Google Sheets Integration** - Full CRUD with automatic response collection
-- ✅ **File Upload System** - Google Drive integration with secure handling
+- ✅ **Supabase Integration** - Full CRUD with automatic response collection
+- ✅ **File Upload System** - Cloudflare R2 storage with secure handling
 - ✅ **Authentication System** - Cookie-based admin login with session management
 - ✅ **Comprehensive Testing** - 4-tier test suite (API + E2E) with automatic cleanup
 - ✅ **Production Deployment** - Docker, Vercel, and manual deployment options
@@ -18,24 +20,27 @@ This project is **production-ready** and **feature-complete** with AI-powered fo
 - ✅ **Data Migration Tools** - Smart handling of form structure changes
 
 ## Overview
-A dynamic form builder application with Google Sheets integration. Forms are stored in a master Google Sheet and responses are saved to designated sheets.
+
+A dynamic form builder application with Supabase backend. Forms are stored in Supabase database and responses are saved with file uploads to Cloudflare R2.
 
 ## Tech Stack
+
 - **Frontend**: Next.js 14 with TypeScript
 - **Backend**: Google Apps Script (GAS)
-- **Database**: Google Sheets
+- **Database**: Supabase (PostgreSQL)
+- **File Storage**: Cloudflare R2
 - **Styling**: Tailwind CSS
 
 ## Project Structure
+
 ```
 /app
   /api
     /auth          # Authentication endpoints (login, logout, check)
     /forms         # Form CRUD operations with admin protection
-      /sheets      # Google Sheets metadata operations
       /test-slack  # Slack webhook testing
     /submit        # Public form submission with validation
-    /upload        # File upload to Google Drive
+    /upload        # File upload to Cloudflare R2
     /responses     # Response data management
     /health        # Application health check
   /builder         # Form builder interface with auth protection
@@ -48,7 +53,7 @@ A dynamic form builder application with Google Sheets integration. Forms are sto
   BuilderForm.tsx      # Advanced form builder with column indicators
   FormRenderer.tsx     # Public form display with validation
   FieldEditor.tsx      # Field configuration with file upload support
-  FieldList.tsx        # Field list with Google Sheets column mapping
+  FieldList.tsx        # Field list with drag-and-drop ordering
   DataMigrationModal.tsx # Smart migration for form structure changes
   AdminKeyGate.tsx     # Authentication wrapper component
 /lib
@@ -73,42 +78,46 @@ A dynamic form builder application with Google Sheets integration. Forms are sto
 ## Key Features
 
 ### 1. Form Management
+
 - Create new forms with unique reference keys
 - Edit existing forms
-- Configure Google Sheets for response storage
+- Configure form settings
 - Add multiple field types (text, email, number, date, textarea, select, radio, checkbox)
 - Field validation with required/optional, patterns, min/max values
 
-### 2. Google Sheets Integration
-- **Master Sheet Management** - Centralized form configuration storage
-- **Response Collection** - Each form saves to designated response sheets
-- **Column Mapping Indicators** - Visual field-to-column mapping in form builder
+### 2. Supabase Backend Integration
+
+- **Form Management** - Centralized form configuration in PostgreSQL
+- **Response Collection** - All responses stored in Supabase tables
+- **File Upload Support** - Files uploaded to Cloudflare R2 with URLs in database
 - **Data Migration Support** - Smart handling of form structure changes
-- **Metadata Operations** - Sheet analysis and validation
-- **Automatic Header Generation** - Dynamic column creation based on form fields
-- **Comprehensive Data Storage** - Timestamp, IP, user agent, and all field data
+- **Real-time Updates** - Live form and response updates
+- **Comprehensive Data Storage** - Timestamp, IP, user agent, file URLs, and all field data
 
 ### 3. Complete API System
 
 #### Authentication Endpoints
+
 - **POST /api/auth/login** - Admin authentication with secure cookies
-- **POST /api/auth/logout** - Session termination with cookie cleanup  
+- **POST /api/auth/logout** - Session termination with cookie cleanup
 - **GET /api/auth/check** - Authentication status verification
 
 #### Form Management (Admin Protected)
+
 - **GET /api/forms** - List all forms or get specific form by refKey
 - **POST /api/forms** - Create or update form configurations
 - **DELETE /api/forms** - Remove forms with data protection
-- **GET /api/forms/sheets** - Google Sheets metadata operations
 - **POST /api/forms/test-slack** - Slack webhook testing
 
 #### Public Endpoints
+
 - **POST /api/submit** - Form submission with validation and file support
-- **POST /api/upload** - File upload to Google Drive
+- **POST /api/upload** - File upload to Cloudflare R2
 - **GET /api/responses** - Response data retrieval (with auth)
 - **GET /api/health** - Application health monitoring
 
 ## Environment Variables
+
 ```env
 GAS_BASE_URL=https://script.google.com/macros/s/DEPLOYMENT_ID/exec
 ADMIN_API_KEY=your-api-key
@@ -116,36 +125,43 @@ ADMIN_UI_KEY=your-ui-key
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
 
-## Google Sheets Structure
+## Database Structure (Supabase)
 
-### Master Sheet
-The master Google Sheet URL is the same as the GAS_BASE_URL in the .env file. This sheet contains the Forms tab:
+### Forms Table
 
-1. **Forms Tab** - Stores form configurations (DO NOT use for testing or create new tabs here):
-   - Column A: refKey (unique identifier)
-   - Column B: title
-   - Column C: description
-   - Column D: responseSheetUrl
-   - Column E: slackWebhookUrl
-   - Column F: fields (JSON)
-   - Column G: createdAt
-   - Column H: updatedAt
-   - **Important**: This tab is for form configuration storage only. Never use the master sheet for testing form submissions or create additional tabs.
+Stores all form configurations:
 
-2. **Response Sheets** - Each form saves responses to separate Google Sheets (not in the master sheet):
-   - Column A: timestamp
-   - Column B: refKey
-   - Column C: ip
-   - Column D: userAgent
-   - Remaining columns: Form field data
+- `id`: UUID primary key
+- `refKey`: Unique form identifier
+- `title`: Form title
+- `description`: Form description
+- `slackWebhookUrl`: Optional Slack webhook
+- `fields`: JSONB array of form fields
+- `createdAt`: Timestamp
+- `updatedAt`: Timestamp
+
+### Responses Table
+
+Stores all form submissions:
+
+- `id`: UUID primary key
+- `refKey`: Reference to form
+- `formData`: JSONB with all field values
+- `files`: JSONB with file URLs from R2
+- `ip`: Submitter's IP address
+- `userAgent`: Browser user agent
+- `submittedAt`: Timestamp
+- `metadata`: Additional submission metadata
 
 ## Recent Bug Fixes
 
 ### Reference Key Validation (Fixed)
+
 **Issue**: The API was returning all forms when checking if a specific refKey exists.
 **Fix**: Updated `/app/api/forms/route.ts` to properly filter the GAS response and return 404 for non-existent forms.
 
 ### UI Improvements
+
 - Added back button to form creation mode (consistent with edit mode)
 - Hide existing forms list when creating new form
 - Back button uses `btn-secondary` class for consistent styling
@@ -153,6 +169,7 @@ The master Google Sheet URL is the same as the GAS_BASE_URL in the .env file. Th
 ## Comprehensive Testing System
 
 ### 4-Tier Test Architecture
+
 ```bash
 # === Main Test Categories ===
 npm run test:api:standard    # 21 core API tests (~1 min)
@@ -173,12 +190,14 @@ npm run test:safety-check    # Verify cleanup configuration
 ```
 
 ### Automatic Cleanup System
+
 - ✅ **Zero Test Data Accumulation** - All test forms and responses auto-deleted
 - ✅ **Production Data Protection** - Multi-layer safety mechanisms
 - ✅ **Cleanup on Failure** - Cleanup runs even when tests fail
 - ✅ **Manual Cleanup Options** - Interactive and automated cleanup tools
 
 ### Development Commands
+
 ```bash
 # Development server
 npm run dev
@@ -195,6 +214,7 @@ curl -s "http://localhost:3000/api/forms?refKey=example" | jq
 ## Common Tasks
 
 ### Creating a New Form
+
 1. Navigate to `/builder`
 2. Click "Create Form"
 3. Fill in form details and unique reference key
@@ -203,24 +223,25 @@ curl -s "http://localhost:3000/api/forms?refKey=example" | jq
 6. Save form
 
 ### Testing Form Submission
+
 1. Navigate to `/f/{refKey}`
 2. Fill in form fields
 3. Submit form
 4. Check Google Sheet for response data - visit the Google Sheet URL to verify data was saved (both for form settings in master sheet and form submissions in response sheets)
 
-### Test Google Sheets for Form Submissions
-Use these separate Google Sheets for testing form submissions (NOT the master sheet):
+### File Storage (Cloudflare R2)
 
-1. <https://docs.google.com/spreadsheets/d/1nw64BTzTPMAsC4al3K0AvxWHwcpcxp9gj-jLsQIv_Kw/edit?usp=sharing>
-2. <https://docs.google.com/spreadsheets/d/1N4Qi7ouqMGQuZEe5j65uhzfd_T7NYlo5fGuGaxXyFz0/edit?usp=share_link>
-3. <https://docs.google.com/spreadsheets/d/1nw64BTzTPMAsC4al3K0AvxWHwcpcxp9gj-jLsQIv_Kw/edit?usp=share_link>
+Files uploaded through forms are stored in Cloudflare R2:
 
-**Note**: Always use separate sheets for form responses. Never configure forms to save responses to the master sheet.
+- Files named: `{refKey}-{timestamp}-{filename}`
+- Public URLs stored in database
+- Automatic file type and size validation
+- Support for single and multiple file uploads
 
 ## Important Notes
 
 1. **Authentication**: Admin operations require either `ADMIN_API_KEY` or `ADMIN_UI_KEY`
-2. **Google Sheets Access**: Ensure the Apps Script project has edit access to all configured spreadsheets
+2. **Database Access**: Ensure Supabase connection is properly configured
 3. **Reference Keys**: Must be unique across all forms
 4. **Response Sheets**: Can be shared between forms but headers will be overwritten based on the last saved form's fields
 
@@ -230,21 +251,24 @@ Use these separate Google Sheets for testing form submissions (NOT the master sh
 2. Use TypeScript types from `/lib/types.ts`
 3. Handle API errors gracefully with user-friendly messages
 4. Test form creation and submission flow after changes
-5. Ensure Google Sheets integration works with proper permissions
+5. Ensure Supabase and R2 integration works with proper credentials
 
 ## Troubleshooting
 
 ### Form Save Fails
+
 - Check if reference key already exists
-- Verify Google Sheet URL is valid
-- Ensure Apps Script has access to the sheet
+- Verify database connection
+- Check Supabase credentials
 
 ### Submissions Not Appearing
+
 - Check browser console for errors
-- Verify response sheet URL is configured
-- Check Google Apps Script logs
+- Verify database connection
+- Check Supabase logs
 
 ### API Returns Unexpected Data
+
 - Clear Next.js cache with `rm -rf .next`
 - Check environment variables
 - Verify GAS deployment is up to date
@@ -252,6 +276,7 @@ Use these separate Google Sheets for testing form submissions (NOT the master sh
 ## 🚢 Advanced Deployment System
 
 ### Interactive Setup (Recommended)
+
 ```bash
 # One-command setup with guided configuration
 npm run setup:deployment
@@ -263,6 +288,7 @@ npm run setup:deployment
 ```
 
 ### Docker Deployment (Automated)
+
 ```bash
 # Complete automated Docker deployment
 npm run deploy:docker:auto
@@ -283,6 +309,7 @@ npm run docker:clean      # Cleanup unused containers
 ```
 
 ### Traditional Deployment
+
 ```bash
 # Production build with quality checks
 npm run build:production  # Includes lint, typecheck, and build
@@ -296,6 +323,7 @@ npm run build:analyze     # Bundle size analysis
 ```
 
 ### Environment Variables (Production)
+
 ```env
 GAS_BASE_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
 ADMIN_API_KEY=your-secure-admin-api-key
@@ -305,6 +333,7 @@ NODE_ENV=production
 ```
 
 ### Enterprise Security Features
+
 - ✅ **Cookie-Based Authentication** - Secure session management with HTTP-only cookies
 - ✅ **Admin Access Control** - Multi-layer protection for form builder and API
 - ✅ **Production Data Protection** - Comprehensive safeguards against accidental data loss
@@ -314,6 +343,7 @@ NODE_ENV=production
 - ✅ **File Upload Security** - Secure handling with type and size validation
 
 ### Performance Optimizations
+
 - ✅ Next.js compression enabled
 - ✅ Image optimization configured
 - ✅ Bundle splitting and tree shaking
@@ -325,6 +355,7 @@ NODE_ENV=production
 ### Available Endpoints
 
 #### 1. Submit Form Data (Public)
+
 ```javascript
 POST /api/submit
 Content-Type: application/json
@@ -340,6 +371,7 @@ Content-Type: application/json
 ```
 
 #### 2. Get Form Configuration (Public)
+
 ```javascript
 GET /api/forms?refKey=contact-form
 
@@ -353,6 +385,7 @@ GET /api/forms?refKey=contact-form
 ```
 
 #### 3. Create/Update Forms (Admin)
+
 ```javascript
 POST /api/forms
 Content-Type: application/json
@@ -370,6 +403,7 @@ x-api-key: your-admin-key
 ### External Integration Examples
 
 #### React/Next.js Integration
+
 ```javascript
 // Custom form component using FormDee API
 const MyCustomForm = () => {
@@ -382,12 +416,12 @@ const MyCustomForm = () => {
         values: formData
       })
     });
-    
+
     if (response.ok) {
       console.log('Form submitted successfully!');
     }
   };
-  
+
   return (
     // Your custom form JSX
   );
@@ -395,6 +429,7 @@ const MyCustomForm = () => {
 ```
 
 #### Mobile App Integration
+
 ```javascript
 // React Native or mobile app
 const submitToFormDee = async (data) => {
@@ -403,24 +438,26 @@ const submitToFormDee = async (data) => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'User-Agent': 'MyMobileApp/1.0'
+        'User-Agent': 'MyMobileApp/1.0',
       },
       body: JSON.stringify({
         refKey: 'mobile-feedback',
-        values: data
-      })
-    });
-    
-    return await response.json();
+        values: data,
+      }),
+    })
+
+    return await response.json()
   } catch (error) {
-    console.error('Submission failed:', error);
+    console.error('Submission failed:', error)
   }
-};
+}
 ```
 
 ### CORS Configuration
+
 The API supports CORS for external domains. Contact the administrator to whitelist your domain for API access.
 
 ### Rate Limiting
+
 - Public endpoints: 100 requests/minute per IP
 - Admin endpoints: 1000 requests/minute with valid API key

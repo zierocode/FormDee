@@ -1,56 +1,131 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { ArrowLeftOutlined, EditOutlined } from '@ant-design/icons'
+import Button from 'antd/es/button'
+import Card from 'antd/es/card'
+import Layout from 'antd/es/layout'
+import Typography from 'antd/es/typography'
+import { useRouter } from 'next/navigation'
 import { AdminKeyGate } from '@/components/AdminKeyGate'
 import { BuilderForm } from '@/components/BuilderForm'
 import { FormConfig } from '@/lib/types'
 
+const { Title } = Typography
+const { Content } = Layout
+
 export const dynamic = 'force-dynamic'
 
-export async function generateMetadata({ params }: { params: Promise<{ refKey: string }> }) {
-  const resolvedParams = await params
-  return {
-    title: `Edit ${resolvedParams.refKey} - FormDee - ฟอร์มดี`,
-    description: 'Build and manage forms with FormDee - สร้างและจัดการฟอร์มด้วย FormDee - ฟอร์มดี'
-  }
-}
-
 async function getForm(refKey: string) {
-  // Updated to handle array responses correctly - fix port to match current server
-  const base = process.env.NEXT_PUBLIC_BASE_URL
-    || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3002')
   try {
-    const res = await fetch(`${base}/api/forms?refKey=${encodeURIComponent(refKey)}`, { cache: 'no-store' })
+    const res = await fetch(`/api/forms?refKey=${encodeURIComponent(refKey)}`, {
+      cache: 'no-store',
+    })
     const result = (await res.json()) as { ok: boolean; data?: FormConfig | FormConfig[] }
-    
+
     // Handle the case where the API returns an array instead of a single object
     if (result.ok && result.data) {
       if (Array.isArray(result.data)) {
         // If data is an array, take the first item (should be the matching form)
-        const formData = result.data.find(form => form.refKey === refKey) || result.data[0]
+        const formData = result.data.find((form) => form.refKey === refKey) || result.data[0]
         return { ok: true, data: formData }
       }
       // If data is already a single object, return as is
       return { ok: true, data: result.data }
     }
-    
+
     return { ok: false }
   } catch {
     return { ok: false } as any
   }
 }
 
-export default async function EditFormPage({ params }: { params: Promise<{ refKey: string }> }) {
-  const resolvedParams = await params
-  const data = await getForm(resolvedParams.refKey)
+function BackButton() {
+  const router = useRouter()
+
+  return (
+    <Button icon={<ArrowLeftOutlined />} onClick={() => router.push('/builder')}>
+      Back
+    </Button>
+  )
+}
+
+export default function EditFormPage({ params }: { params: { refKey: string } }) {
+  const [formData, setFormData] = useState<{ ok: boolean; data?: FormConfig } | null>(null)
+
+  useEffect(() => {
+    getForm(params.refKey).then(setFormData)
+  }, [params.refKey])
+
+  if (!formData) {
+    return (
+      <AdminKeyGate>
+        <Layout style={{ minHeight: '100vh' }}>
+          <Content
+            style={{
+              padding: '24px',
+              background: 'rgb(240, 242, 245)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+            }}
+          >
+            <div>Loading...</div>
+          </Content>
+        </Layout>
+      </AdminKeyGate>
+    )
+  }
+
   return (
     <AdminKeyGate>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <a href="/builder" className="btn-secondary">← Back</a>
-            <h1 className="text-2xl font-semibold">Edit Form</h1>
+      <Layout style={{ minHeight: '100vh' }}>
+        <Content
+          style={{
+            padding: '24px',
+            background: 'rgb(240, 242, 245)',
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 1200,
+              margin: '0 auto',
+            }}
+          >
+            {/* Main Container */}
+            <Card styles={{ body: { padding: 0 } }} style={{ background: '#fff' }}>
+              <div
+                style={{
+                  padding: '24px',
+                  borderBottom: '1px solid #f0f0f0',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <BackButton />
+                  <EditOutlined style={{ fontSize: '24px', color: '#1890ff' }} />
+                  <Title level={4} style={{ margin: 0 }}>
+                    Edit Form
+                  </Title>
+                </div>
+                <div id="save-form-button-container">
+                  {/* Save Form button will be rendered here */}
+                </div>
+              </div>
+              <div style={{ padding: '24px' }}>
+                <BuilderForm
+                  mode="edit"
+                  refKeyHint={params.refKey}
+                  initial={formData.ok ? formData.data : undefined}
+                  saveButtonContainer="#save-form-button-container"
+                />
+              </div>
+            </Card>
           </div>
-        </div>
-        <BuilderForm mode="edit" refKeyHint={resolvedParams.refKey} initial={data.ok ? data.data : undefined} />
-      </div>
+        </Content>
+      </Layout>
     </AdminKeyGate>
   )
 }

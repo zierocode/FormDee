@@ -1,114 +1,109 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { UploadedFile, ApiResult } from '@/lib/types'
+import { HTTP_STATUS } from '@/lib/constants'
+import { uploadToR2 } from '@/lib/r2-storage'
 
-const GAS_BASE_URL = process.env.GAS_BASE_URL
+export const maxDuration = 60
 
-export async function POST(request: NextRequest) {
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+const ALLOWED_FILE_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
+  'text/csv',
+]
+
+function errorResponse(message: string, code: number = HTTP_STATUS.BAD_REQUEST) {
+  return NextResponse.json({ ok: false, error: { code: String(code), message } }, { status: code })
+}
+
+export async function POST(req: NextRequest) {
   try {
-    if (!GAS_BASE_URL) {
-      return NextResponse.json(
-        { error: 'Server configuration error' },
-        { status: 500 }
-      )
+    const formData = await req.formData()
+
+    const file = formData.get('file') as File | null
+    const refKey = formData.get('refKey') as string | null
+    const fieldKey = formData.get('fieldKey') as string | null
+
+    if (!file) {
+      return errorResponse('No file provided')
     }
 
-    const formData = await request.formData()
-    const file = formData.get('file') as File
-    const fieldKey = formData.get('fieldKey') as string
-    const refKey = formData.get('refKey') as string
-
-    if (!file || !fieldKey || !refKey) {
-      return NextResponse.json(
-        { error: 'File, fieldKey, and refKey are required' },
-        { status: 400 }
-      )
+    if (!refKey) {
+      return errorResponse('Form reference key is required')
     }
 
-    // Get form configuration to find upload folder URL
-    const formResponse = await fetch(`${GAS_BASE_URL}?op=forms&refKey=${encodeURIComponent(refKey)}`)
-    const formResult = await formResponse.json()
-    
-    if (!formResponse.ok || !formResult.ok) {
-      return NextResponse.json(
-        { error: 'Form not found or no upload folder configured' },
-        { status: 404 }
-      )
-    }
-    
-    const formData_config = Array.isArray(formResult.data) ? formResult.data[0] : formResult.data
-    if (!formData_config.uploadFolderUrl) {
-      return NextResponse.json(
-        { error: 'No upload folder configured for this form' },
-        { status: 400 }
-      )
+    if (!fieldKey) {
+      return errorResponse('Field key is required')
     }
 
-    // Validate file size (100MB max)
-    const maxSize = 100 * 1024 * 1024
-    if (file.size > maxSize) {
-      return NextResponse.json(
-        { error: 'File size exceeds maximum limit of 100MB' },
-        { status: 400 }
-      )
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      return errorResponse(`File size exceeds ${MAX_FILE_SIZE / (1024 * 1024)}MB limit`)
     }
 
-    // Convert file to base64 for Google Apps Script
-    const buffer = await file.arrayBuffer()
-    const base64 = Buffer.from(buffer).toString('base64')
-
-    // Prepare payload for Google Apps Script
-    const payload = {
-      op: 'upload_file',
-      file: {
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        content: base64,
-      },
-      fieldKey,
-      uploadFolderUrl: formData_config.uploadFolderUrl,
+    // Validate file type
+    const fileType = file.type || 'application/octet-stream'
+    if (!ALLOWED_FILE_TYPES.includes(fileType)) {
+      return errorResponse('File type not allowed')
     }
 
-    // Send to Google Apps Script
-    const response = await fetch(GAS_BASE_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
+    // Convert file to buffer
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+
+    // Upload to R2
+    const result = await uploadToR2({
+      file: buffer,
+      fileName: file.name,
+      refKey,
+      contentType: fileType,
     })
 
-    const result = await response.json()
-
-    if (!response.ok || !result.ok) {
-      return NextResponse.json(
-        { error: result.error?.message || 'Upload failed' },
-        { status: response.status || 500 }
+    if (!result.success) {
+      return errorResponse(
+        result.error || 'Failed to upload file',
+        HTTP_STATUS.INTERNAL_SERVER_ERROR
       )
     }
 
-    // Return the uploaded file information from result.data
-    const uploadedFile: UploadedFile = {
-      id: result.data.id,
-      name: result.data.name,
-      size: result.data.size,
-      type: result.data.type,
-      url: result.data.url,
-      uploadedAt: result.data.uploadedAt,
-    }
-
-    const apiResult: ApiResult<UploadedFile> = {
+    // Return success response with file URL
+    return NextResponse.json({
       ok: true,
-      data: uploadedFile,
-    }
-
-    return NextResponse.json(apiResult)
-
+      data: {
+        url: result.url,
+        key: result.key,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: fileType,
+        fieldKey: fieldKey,
+      },
+    })
   } catch (error: any) {
-    console.error('Upload error:', error)
-    return NextResponse.json(
-      { error: error?.message || 'Internal server error' },
-      { status: 500 }
+    console.error('[API] Upload error:', error)
+    return errorResponse(
+      error?.message || 'Failed to upload file',
+      HTTP_STATUS.INTERNAL_SERVER_ERROR
     )
   }
+}
+
+// Add OPTIONS for CORS preflight
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 200,
+    headers: {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Max-Age': '86400',
+    },
+  })
 }

@@ -1,27 +1,50 @@
-'use client';
+'use client'
 
-import { useState, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { toast } from 'react-hot-toast';
-import Image from 'next/image';
+import { useState, Suspense } from 'react'
+import { LockOutlined } from '@ant-design/icons'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Input, Button, Card, Typography, Space, Spin } from 'antd'
+import Image from 'next/image'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useForm, Controller } from 'react-hook-form'
+import { toast } from 'react-hot-toast'
+import { z } from 'zod'
+
+const { Title, Text } = Typography
+
+// Zod schema for login validation
+const loginSchema = z.object({
+  adminKey: z
+    .string({
+      required_error: 'Please enter your admin key',
+    })
+    .min(1, 'Please enter your admin key'),
+})
+
+type LoginFormData = z.infer<typeof loginSchema>
 
 function LoginForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const returnUrl = searchParams.get('returnUrl') || '/builder';
-  
-  const [adminKey, setAdminKey] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const returnUrl = searchParams.get('returnUrl') || '/builder'
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!adminKey.trim()) {
-      toast.error('Please enter an admin key');
-      return;
-    }
+  const [isLoading, setIsLoading] = useState(false)
 
-    setIsLoading(true);
+  // React Hook Form setup
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    mode: 'onBlur',
+    defaultValues: {
+      adminKey: '',
+    },
+  })
+
+  const onSubmit = async (values: LoginFormData) => {
+    setIsLoading(true)
 
     try {
       const response = await fetch('/api/auth/login', {
@@ -29,86 +52,168 @@ function LoginForm() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ adminKey }),
-      });
+        body: JSON.stringify({ adminKey: values.adminKey }),
+      })
 
-      const data = await response.json();
+      const data = await response.json()
 
       if (response.ok) {
-        toast.success('Login successful');
-        router.push(returnUrl);
-        router.refresh();
+        toast.success('Login successful')
+        router.push(returnUrl)
+        router.refresh()
       } else {
-        toast.error(data.error || 'Invalid admin key');
+        toast.error(data.error || 'Invalid admin key')
       }
     } catch (error) {
-      toast.error('An error occurred. Please try again.');
+      toast.error('An error occurred. Please try again.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <div className="flex justify-center mb-6">
-            <Image 
-              src="/FormDee-logo.png" 
-              alt="FormDee Logo" 
-              width={100} 
-              height={100}
-              className="w-24 h-24"
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Ant Design-inspired background pattern */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: `
+          radial-gradient(circle at 20% 80%, rgba(24, 144, 255, 0.1) 0%, transparent 50%),
+          radial-gradient(circle at 80% 20%, rgba(24, 144, 255, 0.08) 0%, transparent 50%),
+          radial-gradient(circle at 40% 40%, rgba(24, 144, 255, 0.05) 0%, transparent 50%)
+        `,
+          pointerEvents: 'none',
+        }}
+      />
+
+      <Card
+        style={{
+          width: '100%',
+          maxWidth: 400,
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+          borderRadius: 8,
+        }}
+        styles={{
+          body: {
+            padding: '32px 24px 24px',
+          },
+        }}
+      >
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          {/* Centered logo section */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              marginBottom: 8,
+            }}
+          >
+            <Image
+              src="/FormDee-logo.png"
+              alt="FormDee Logo"
+              width={80}
+              height={80}
+              style={{ marginBottom: 12 }}
             />
-          </div>
-          <h1 className="text-4xl font-bold text-gray-900 mb-1">
-            FormDee
-          </h1>
-          <p className="text-2xl text-gray-600">
-            ฟอร์มดี
-          </p>
-          <p className="mt-6 text-lg text-gray-600">
-            Enter your admin key to access the form builder
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="admin-key" className="block text-sm font-medium text-gray-700 mb-2">
-              Admin Key
-            </label>
-            <input
-              id="admin-key"
-              name="adminKey"
-              type="password"
-              autoComplete="current-password"
-              required
-              className="appearance-none rounded-lg relative block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors"
-              placeholder="Enter your admin key"
-              value={adminKey}
-              onChange={(e) => setAdminKey(e.target.value)}
-              disabled={isLoading}
-            />
+            <Title level={2} style={{ margin: '0 0 2px 0', fontSize: 28 }}>
+              FormDee
+            </Title>
+            <Text type="secondary" style={{ fontSize: 18 }}>
+              ฟอร์มดี
+            </Text>
           </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          <form onSubmit={handleSubmit(onSubmit)} style={{ marginTop: 8 }}>
+            <div style={{ marginBottom: 16 }}>
+              <Controller
+                name="adminKey"
+                control={control}
+                render={({ field }) => (
+                  <Input.Password
+                    {...field}
+                    prefix={<LockOutlined />}
+                    placeholder="Enter admin key"
+                    autoComplete="current-password"
+                    size="large"
+                    status={errors.adminKey ? 'error' : undefined}
+                    styles={{
+                      input: {
+                        textAlign: 'center',
+                      },
+                    }}
+                  />
+                )}
+              />
+              {errors.adminKey && (
+                <div
+                  style={{
+                    color: '#ff4d4f',
+                    fontSize: 14,
+                    marginTop: 4,
+                    textAlign: 'center',
+                  }}
+                >
+                  {errors.adminKey.message}
+                </div>
+              )}
+            </div>
+
+            <div
+              style={{
+                marginBottom: 0,
+                marginTop: 8,
+              }}
             >
-              {isLoading ? 'Logging in...' : 'Sign In'}
-            </button>
-          </div>
-        </form>
-      </div>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={isLoading}
+                block
+                size="large"
+                style={{ height: 46 }}
+              >
+                {isLoading ? 'Logging in...' : 'Sign In'}
+              </Button>
+            </div>
+          </form>
+        </Space>
+      </Card>
     </div>
-  );
+  )
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div
+          style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Spin size="large" />
+        </div>
+      }
+    >
       <LoginForm />
     </Suspense>
-  );
+  )
 }

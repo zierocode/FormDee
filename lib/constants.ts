@@ -50,11 +50,24 @@ export const FILE_UPLOAD = {
   MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB default
   MAX_FILES_PER_FIELD: 5,
   ALLOWED_TYPES: [
-    '.pdf', '.doc', '.docx', '.txt', // Documents
-    '.jpg', '.jpeg', '.png', '.gif', '.webp', // Images
-    '.zip', '.rar', '.7z', // Archives
-    '.mp4', '.mov', '.avi', // Videos (small)
-    '.mp3', '.wav', '.m4a', // Audio (small)
+    '.pdf',
+    '.doc',
+    '.docx',
+    '.txt', // Documents
+    '.jpg',
+    '.jpeg',
+    '.png',
+    '.gif',
+    '.webp', // Images
+    '.zip',
+    '.rar',
+    '.7z', // Archives
+    '.mp4',
+    '.mov',
+    '.avi', // Videos (small)
+    '.mp3',
+    '.wav',
+    '.m4a', // Audio (small)
   ],
   UPLOAD_TIMEOUT: 60000, // 60 seconds
 } as const
@@ -71,7 +84,7 @@ export const ERROR_MESSAGES = {
   FIELD_REQUIRED: 'This field is required.',
   INVALID_EMAIL: 'Please enter a valid email address.',
   INVALID_URL: 'Please enter a valid URL.',
-  REF_KEY_EXISTS: 'Reference key already exists.',
+  REF_KEY_EXISTS: 'URL already exists.',
   FILE_TOO_LARGE: 'File size exceeds the maximum allowed limit.',
   FILE_TYPE_NOT_ALLOWED: 'File type is not allowed.',
   UPLOAD_FAILED: 'File upload failed. Please try again.',

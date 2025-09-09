@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ERROR_MESSAGES, HTTP_STATUS } from '@/lib/constants'
+import { supabase } from '@/lib/supabase'
 
 function errorResponse(message: string, code: number = HTTP_STATUS.BAD_REQUEST) {
   return NextResponse.json(
@@ -8,86 +9,160 @@ function errorResponse(message: string, code: number = HTTP_STATUS.BAD_REQUEST) 
   )
 }
 
-async function callGAS(path: string, options?: RequestInit): Promise<any> {
-  const baseUrl = process.env.GAS_BASE_URL
-  if (!baseUrl) {
-    throw new Error('GAS_BASE_URL not configured')
-  }
-  
-  const url = `${baseUrl}${path}`
-  console.log('[GAS] Calling:', url)
-  
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    cache: 'no-store',
-    redirect: 'follow',
-    ...options
-  })
-  
-  console.log('[GAS] Response status:', response.status, 'URL:', response.url)
-  
-  if (!response.ok) {
-    const text = await response.text()
-    console.log('[GAS] Error response:', text.slice(0, 200))
-    throw new Error(`GAS returned status ${response.status}`)
-  }
-  
-  const text = await response.text()
-  console.log('[GAS] Response text:', text.slice(0, 200))
-  
+/**
+ * Send Slack notification for form submission
+ */
+async function sendSlackNotification(
+  webhookUrl: string,
+  formTitle: string,
+  formFields: any[],
+  submissionData: any
+) {
   try {
-    return JSON.parse(text)
+    const fields = formFields.map((field) => {
+      const value = submissionData[field.key] || 'N/A'
+      return {
+        title: field.label || field.key,
+        value: typeof value === 'object' ? JSON.stringify(value) : String(value),
+        short: true,
+      }
+    })
+
+    const payload = {
+      text: `New form submission: ${formTitle}`,
+      attachments: [
+        {
+          color: 'good',
+          fields: fields,
+          footer: 'FormDee',
+          ts: Math.floor(Date.now() / 1000),
+        },
+      ],
+    }
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.ok) {
+      throw new Error(`Slack API returned ${response.status}`)
+    }
+
+    return true
   } catch (error) {
-    console.error('[GAS] Failed to parse JSON:', text.slice(0, 200))
-    throw new Error('Invalid JSON response from GAS')
+    console.error('Slack notification error:', error)
+    return false
   }
 }
 
 async function handlePost(req: NextRequest) {
   try {
     const body = await req.json()
-    
-    // Get IP and User-Agent
-    const ip = req.headers.get('x-forwarded-for') || 
-               req.headers.get('x-real-ip') || 
-               'unknown'
+
+    // Validate required fields
+    if (!body || !body.refKey) {
+      return errorResponse('Form refKey required', HTTP_STATUS.BAD_REQUEST)
+    }
+
+    if (!body.values || typeof body.values !== 'object') {
+      return errorResponse('Form values required', HTTP_STATUS.BAD_REQUEST)
+    }
+
+    // Get form configuration from Supabase
+    const { data: form, error: formError } = await supabase
+      .from('Forms')
+      .select('*')
+      .eq('refKey', body.refKey)
+      .single()
+
+    if (formError || !form) {
+      console.error('Form lookup error:', formError)
+      return errorResponse(`Form not found: ${body.refKey}`, HTTP_STATUS.NOT_FOUND)
+    }
+
+    // Parse fields if it's a string
+    let formFields = form.fields
+    if (typeof formFields === 'string') {
+      try {
+        formFields = JSON.parse(formFields)
+      } catch (e) {
+        console.error('Failed to parse form fields:', e)
+        formFields = []
+      }
+    }
+
+    // Get IP and User Agent
+    const ip =
+      req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || req.ip || 'unknown'
     const userAgent = req.headers.get('user-agent') || 'unknown'
-    
-    // Add metadata to submission
-    const submissionData = {
-      ...body,
-      ip,
-      userAgent
+
+    // Extract file URLs from form values
+    const fileUrls: Record<string, any> = {}
+    for (const field of formFields) {
+      if (field.type === 'file' && body.values[field.key]) {
+        fileUrls[field.key] = body.values[field.key]
+      }
     }
-    
-    console.log('[SUBMIT API] POST request:', { 
-      body: submissionData,
-      refKey: submissionData.refKey,
-      values: submissionData.values
-    })
-    
-    // Submit form data to GAS
-    const result = await callGAS('?op=submit', {
-      method: 'POST',
-      body: JSON.stringify(submissionData)
-    })
-    
-    console.log('[SUBMIT API] GAS result:', result)
-    
-    // Handle response
-    if (result?.ok === false) {
-      return errorResponse(
-        result.error?.message || ERROR_MESSAGES.SUBMISSION_FAILED,
-        parseInt(result.error?.code) || HTTP_STATUS.BAD_REQUEST
+
+    // Prepare response data for Supabase
+    const responseData = {
+      refKey: body.refKey,
+      formData: body.values,
+      ip: ip,
+      userAgent: userAgent,
+      files: fileUrls,
+      slackNotificationSent: false,
+      slackNotificationError: null as string | null,
+      submittedAt: new Date().toISOString(),
+      metadata: {
+        formTitle: form.title,
+        submissionSource: 'web',
+        ...body.metadata,
+      },
+    }
+
+    // Send Slack notification if configured
+    if (form.slackWebhookUrl) {
+      const slackSent = await sendSlackNotification(
+        form.slackWebhookUrl,
+        form.title,
+        formFields,
+        body.values
       )
+      responseData.slackNotificationSent = slackSent
+      if (!slackSent) {
+        responseData.slackNotificationError = 'Failed to send Slack notification'
+      }
     }
-    
+
+    // Save to Supabase Responses table
+    const { data: savedResponse, error: saveError } = await supabase
+      .from('Responses')
+      .insert(responseData)
+      .select()
+      .single()
+
+    if (saveError) {
+      console.error('Error saving response:', saveError)
+      return errorResponse('Failed to save form submission', HTTP_STATUS.INTERNAL_SERVER_ERROR)
+    }
+
+    console.log('[SUBMIT API] Submission saved:', {
+      responseId: savedResponse.id,
+      refKey: body.refKey,
+    })
+
     // Return success response
-    return NextResponse.json(result?.ok ? result : { ok: true, data: result })
-    
+    return NextResponse.json({
+      ok: true,
+      data: {
+        message: 'Form submitted successfully',
+        responseId: savedResponse.id,
+        submittedAt: savedResponse.submittedAt,
+      },
+    })
   } catch (error: any) {
     console.error('[API] Submit error:', error)
     return errorResponse(

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { withApiAuth } from '@/lib/auth-supabase'
 import { ERROR_MESSAGES, HTTP_STATUS } from '@/lib/constants'
-
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY
-const ADMIN_UI_KEY = process.env.ADMIN_UI_KEY
-const GAS_BASE_URL = process.env.GAS_BASE_URL
+import { supabase } from '@/lib/supabase'
 
 function errorResponse(message: string, code: number = HTTP_STATUS.BAD_REQUEST) {
   return NextResponse.json(
@@ -12,76 +10,142 @@ function errorResponse(message: string, code: number = HTTP_STATUS.BAD_REQUEST) 
   )
 }
 
-function validateAdminKey(req: NextRequest): boolean {
-  const clientKey = 
-    req.headers.get('x-admin-key') || 
-    req.cookies.get('admin_key')?.value || 
-    new URL(req.url).searchParams.get('adminKey')
-  
-  const validKeys = [ADMIN_UI_KEY, ADMIN_API_KEY].filter(Boolean)
-  return validKeys.some(key => key === clientKey)
-}
-
-async function callGAS(queryString: string, options: RequestInit = {}) {
-  const url = `${GAS_BASE_URL}${queryString}`
-  const response = await fetch(url, {
-    method: 'GET',
-    ...options
-  })
-
-  if (!response.ok) {
-    throw new Error(`GAS request failed: ${response.status} ${response.statusText}`)
-  }
-
-  return response.json()
-}
-
-async function handleDelete(req: NextRequest) {
+/**
+ * GET /api/responses - Fetch form responses from Supabase
+ * Query params:
+ * - refKey: Filter by form reference key
+ * - limit: Maximum number of responses to return (default: 100)
+ * - offset: Skip this many responses (for pagination)
+ * - startDate: Filter responses after this date
+ * - endDate: Filter responses before this date
+ */
+async function handleGet(req: NextRequest) {
   try {
-    // Validate admin key
-    if (!validateAdminKey(req)) {
-      return errorResponse(ERROR_MESSAGES.UNAUTHORIZED, HTTP_STATUS.UNAUTHORIZED)
+    // Validate authentication - responses require API or UI key
+    const auth = await withApiAuth(req, 'any')
+    if (!auth.authenticated) {
+      return errorResponse(auth.error || ERROR_MESSAGES.UNAUTHORIZED, HTTP_STATUS.UNAUTHORIZED)
     }
 
     const { searchParams } = new URL(req.url)
-    const sheetUrl = searchParams.get('sheetUrl')
     const refKey = searchParams.get('refKey')
-    
-    if (!sheetUrl) {
-      return errorResponse('Missing sheetUrl parameter', HTTP_STATUS.BAD_REQUEST)
-    }
+    const limit = parseInt(searchParams.get('limit') || '100')
+    const offset = parseInt(searchParams.get('offset') || '0')
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
 
-    // Build query parameters
-    const queryParams = new URLSearchParams({
-      op: 'responses_delete',
-      sheetUrl: sheetUrl,
-      apiKey: ADMIN_API_KEY || ''
-    })
-    
+    // Build query
+    let query = supabase
+      .from('Responses')
+      .select('*')
+      .order('submittedAt', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    // Apply filters
     if (refKey) {
-      queryParams.append('refKey', refKey)
+      query = query.eq('refKey', refKey)
+    }
+    if (startDate) {
+      query = query.gte('submittedAt', startDate)
+    }
+    if (endDate) {
+      query = query.lte('submittedAt', endDate)
     }
 
-    // Call GAS to delete responses
-    const result = await callGAS(`?${queryParams.toString()}`, {
-      method: 'POST'  // GAS web app uses POST for all operations
-    })
-    
-    // Handle the GAS response structure properly
-    if (result?.ok === false) {
-      return errorResponse(
-        result.error?.message || ERROR_MESSAGES.GENERIC,
-        parseInt(result.error?.code) || HTTP_STATUS.BAD_REQUEST
-      )
-    }
-    
-    return NextResponse.json({ 
-      ok: true, 
-      message: result.message || 'Responses deleted successfully',
-      deletedCount: result.deletedCount || 0,
-      sheetName: result.sheetName || 'Unknown'
-    })
+    const { data, error, count } = await query
 
+    if (error) {
+      console.error('Error fetching responses:', error)
+      return errorResponse('Failed to fetch responses', HTTP_STATUS.INTERNAL_SERVER_ERROR)
+    }
+
+    // Get total count for pagination
+    let totalCount = count
+    if (totalCount === null) {
+      // Fetch total count separately if not provided
+      const countQuery = supabase.from('Responses').select('*', { count: 'exact', head: true })
+
+      if (refKey) {
+        countQuery.eq('refKey', refKey)
+      }
+      if (startDate) {
+        countQuery.gte('submittedAt', startDate)
+      }
+      if (endDate) {
+        countQuery.lte('submittedAt', endDate)
+      }
+
+      const { count: totalRows } = await countQuery
+      totalCount = totalRows || 0
+    }
+
+    return NextResponse.json({
+      ok: true,
+      data: data || [],
+      pagination: {
+        total: totalCount,
+        limit,
+        offset,
+        hasMore: offset + limit < (totalCount || 0),
+      },
+    })
+  } catch (error: any) {
+    console.error('[API] Responses GET error:', error)
+    return errorResponse(
+      error?.message || ERROR_MESSAGES.GENERIC,
+      HTTP_STATUS.INTERNAL_SERVER_ERROR
+    )
+  }
+}
+
+/**
+ * DELETE /api/responses - Delete form responses from Supabase
+ * Query params:
+ * - refKey: Delete only responses for this form
+ * - responseId: Delete specific response by ID
+ * - all: Delete all responses (requires confirmation)
+ */
+async function handleDelete(req: NextRequest) {
+  try {
+    // Validate authentication - responses require API or UI key
+    const auth = await withApiAuth(req, 'any')
+    if (!auth.authenticated) {
+      return errorResponse(auth.error || ERROR_MESSAGES.UNAUTHORIZED, HTTP_STATUS.UNAUTHORIZED)
+    }
+
+    const { searchParams } = new URL(req.url)
+    const refKey = searchParams.get('refKey')
+    const responseId = searchParams.get('responseId')
+    const deleteAll = searchParams.get('all') === 'true'
+
+    // Build delete query
+    let query = supabase.from('Responses').delete()
+
+    if (responseId) {
+      // Delete specific response
+      query = query.eq('id', responseId)
+    } else if (refKey) {
+      // Delete all responses for a specific form
+      query = query.eq('refKey', refKey)
+    } else if (deleteAll) {
+      // Delete all responses (dangerous!)
+      // No additional filter needed
+    } else {
+      return errorResponse('Must specify responseId, refKey, or all=true', HTTP_STATUS.BAD_REQUEST)
+    }
+
+    const { error, count } = await query
+
+    if (error) {
+      console.error('Error deleting responses:', error)
+      return errorResponse('Failed to delete responses', HTTP_STATUS.INTERNAL_SERVER_ERROR)
+    }
+
+    return NextResponse.json({
+      ok: true,
+      message: `Deleted ${count || 0} response(s)`,
+      deletedCount: count || 0,
+    })
   } catch (error: any) {
     console.error('[API] Responses DELETE error:', error)
     return errorResponse(
@@ -91,7 +155,8 @@ async function handleDelete(req: NextRequest) {
   }
 }
 
-// Simple exports without caching middleware
+// Export handlers
+export const GET = handleGet
 export const DELETE = handleDelete
 
 // Add OPTIONS for CORS preflight
@@ -100,7 +165,7 @@ export async function OPTIONS() {
     status: 200,
     headers: {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'DELETE, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Key',
       'Access-Control-Max-Age': '86400',
     },

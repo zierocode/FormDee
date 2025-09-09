@@ -6,5 +6,8 @@
   "printWidth": 100,
   "bracketSpacing": true,
   "arrowParens": "always",
-  "endOfLine": "lf"
+  "endOfLine": "lf",
+  "useTabs": false,
+  "plugins": ["prettier-plugin-tailwindcss"],
+  "tailwindConfig": "./tailwind.config.ts"
 }

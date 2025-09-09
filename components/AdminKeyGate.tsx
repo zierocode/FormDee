@@ -1,5 +1,6 @@
-"use client"
+'use client'
 import { ReactNode, useEffect, useState } from 'react'
+import { Spin } from 'antd'
 import { useRouter } from 'next/navigation'
 import { AuthProvider } from './AuthProvider'
 
@@ -16,11 +17,12 @@ export function AdminKeyGate({ children }: { children: ReactNode }) {
         if (!response.ok) {
           // Not authenticated, redirect to login
           router.push('/login?returnUrl=' + encodeURIComponent(window.location.pathname))
+          setLoading(false)
         } else {
           // Get admin key from API response
           const data = await response.json()
           if (data.adminKey) {
-            console.log('Found admin key from API:', data.adminKey.substring(0, 10) + '...')
+            console.log('Found admin key from API:', data.adminKey.substring(0, 4) + '...')
             setAdminKey(data.adminKey)
           } else {
             console.warn('No admin key in API response')
@@ -38,16 +40,18 @@ export function AdminKeyGate({ children }: { children: ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '400px',
+        }}
+      >
+        <Spin size="large" />
       </div>
     )
   }
 
-  return (
-    <AuthProvider adminKey={adminKey || ''}>
-      {children}
-    </AuthProvider>
-  )
+  return <AuthProvider adminKey={adminKey || ''}>{children}</AuthProvider>
 }
-

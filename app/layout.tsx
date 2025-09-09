@@ -1,9 +1,20 @@
 import './globals.css'
 import type { ReactNode } from 'react'
+import { AntdRegistry } from '@ant-design/nextjs-registry'
+import { ConfigProvider } from 'antd'
 import type { Metadata } from 'next'
+import { Sarabun } from 'next/font/google'
+import { Toaster } from 'react-hot-toast'
 import { ConditionalHeader } from '@/components/ConditionalHeader'
 import { ConditionalMain } from '@/components/ConditionalMain'
-import { Toaster } from 'react-hot-toast'
+import { QueryProvider } from '@/components/QueryProvider'
+
+const sarabun = Sarabun({
+  weight: ['300', '400', '500', '600', '700'],
+  subsets: ['latin', 'thai'],
+  display: 'swap',
+  variable: '--font-sarabun',
+})
 
 export const metadata: Metadata = {
   title: 'FormDee - ฟอร์มดี',
@@ -30,18 +41,33 @@ export const metadata: Metadata = {
 }
 
 export const viewport = {
-  themeColor: '#3b82f6',
-};
+  themeColor: '#1890ff',
+}
+
+// Ant Design theme configuration
+const theme = {
+  token: {
+    fontFamily:
+      'var(--font-sarabun), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+    colorPrimary: '#1890ff',
+    borderRadius: 6,
+  },
+}
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body>
-        <Toaster position="top-center" />
-        <ConditionalHeader />
-        <ConditionalMain>{children}</ConditionalMain>
+    <html lang="en" className={sarabun.variable}>
+      <body className={sarabun.className}>
+        <QueryProvider>
+          <AntdRegistry>
+            <ConfigProvider theme={theme}>
+              <Toaster position="top-center" />
+              <ConditionalHeader />
+              <ConditionalMain>{children}</ConditionalMain>
+            </ConfigProvider>
+          </AntdRegistry>
+        </QueryProvider>
       </body>
     </html>
   )
 }
-

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { metricsCollector } from '@/lib/server/api-middleware'
-import { gasConnector } from '@/lib/server/gas-optimized'
+import { supabase } from '@/lib/supabase'
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -9,34 +9,40 @@ export async function GET(req: NextRequest) {
   try {
     // Get health status
     const health = metricsCollector.getHealthStatus()
-    
-    // Get GAS metrics if detailed
+
+    // Add Supabase health check if detailed
     if (detailed) {
-      const gasMetrics = gasConnector.getMetrics()
-      
+      let supabaseStatus = 'healthy'
+      try {
+        // Simple Supabase connection test
+        const { error } = await supabase.from('Forms').select('count').limit(1)
+        if (error) supabaseStatus = 'unhealthy'
+      } catch (e) {
+        supabaseStatus = 'unhealthy'
+      }
+
       return NextResponse.json({
         ...health,
-        gas: gasMetrics,
+        supabase: { status: supabaseStatus },
         environment: {
           nodeVersion: process.version,
           uptime: process.uptime(),
           memoryUsage: process.memoryUsage(),
-        }
+        },
       })
     }
 
     // Simple health check
     return NextResponse.json({
       status: health.status,
-      timestamp: health.timestamp
+      timestamp: health.timestamp,
     })
-
   } catch (error: any) {
     return NextResponse.json(
       {
         status: 'unhealthy',
         error: error.message,
-        timestamp: new Date()
+        timestamp: new Date(),
       },
       { status: 503 }
     )

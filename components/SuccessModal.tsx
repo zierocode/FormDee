@@ -1,5 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { CheckOutlined } from '@ant-design/icons'
+import { Button } from 'antd'
 
 interface SuccessModalProps {
   isOpen: boolean
@@ -16,7 +18,7 @@ export function SuccessModal({ isOpen, onClose, message }: SuccessModalProps) {
       setIsVisible(true)
       // Trigger animation after a brief delay to ensure proper transition
       setTimeout(() => setIsAnimating(true), 10)
-      
+
       const timer = setTimeout(() => {
         // Start fade out animation
         setIsAnimating(false)
@@ -26,7 +28,7 @@ export function SuccessModal({ isOpen, onClose, message }: SuccessModalProps) {
           onClose()
         }, 300)
       }, 3000) // Auto-close after 3 seconds
-      
+
       return () => clearTimeout(timer)
     }
     return undefined
@@ -35,41 +37,43 @@ export function SuccessModal({ isOpen, onClose, message }: SuccessModalProps) {
   if (!isVisible) return null
 
   return (
-    <div 
+    <div
       className={`fixed inset-0 z-50 flex items-start justify-center transition-all duration-300 ${
         isAnimating ? 'bg-black/50' : 'bg-black/0'
       }`}
     >
-      <div 
-        className={`mx-4 mt-8 max-w-sm rounded-lg bg-white p-6 shadow-lg transform transition-all duration-300 ${
-          isAnimating 
-            ? 'translate-y-0 opacity-100 scale-100' 
-            : '-translate-y-4 opacity-0 scale-95'
+      <div
+        className={`mx-4 mt-8 max-w-sm transform rounded-lg bg-white p-6 shadow-lg transition-all duration-300 ${
+          isAnimating ? 'translate-y-0 scale-100 opacity-100' : '-translate-y-4 scale-95 opacity-0'
         }`}
       >
         <div className="flex items-center space-x-3">
-          <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-green-100 transition-transform duration-500 ${
-            isAnimating ? 'scale-100' : 'scale-0'
-          }`}>
-            <svg 
-              className="h-6 w-6 text-green-600" 
-              fill="none" 
-              stroke="currentColor" 
+          <div
+            className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-green-100 transition-transform duration-500 ${
+              isAnimating ? 'scale-100' : 'scale-0'
+            }`}
+          >
+            <svg
+              className="h-6 w-6 text-green-600"
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2.5} 
-                d="M5 13l4 4L19 7" 
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M5 13l4 4L19 7"
               />
             </svg>
           </div>
           <p className="text-sm text-gray-800">{message}</p>
         </div>
         <div className="mt-4 flex justify-end">
-          <button
+          <Button
+            type="primary"
+            icon={<CheckOutlined />}
             onClick={() => {
               setIsAnimating(false)
               setTimeout(() => {
@@ -77,10 +81,11 @@ export function SuccessModal({ isOpen, onClose, message }: SuccessModalProps) {
                 onClose()
               }, 300)
             }}
-            className="rounded-md bg-green-600 px-3 py-1 text-sm text-white transition-colors hover:bg-green-700"
+            className="border-green-600 bg-green-600 hover:border-green-700 hover:bg-green-700"
+            size="small"
           >
             Close
-          </button>
+          </Button>
         </div>
       </div>
     </div>

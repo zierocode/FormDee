@@ -1,5 +1,5 @@
 /**
- * 🚀 FormDee - Google Apps Script Backend (Production v1.1.0)
+ * 🚀 FormDee - Google Apps Script Backend (Production v1.2.0)
  * 
  * ENTERPRISE-READY FORM BUILDER BACKEND
  * 
@@ -349,7 +349,7 @@ function getSettingsSheet() {
     
     // Add default settings
     const defaultSettings = [
-      ['aiModel', 'gpt-5-mini', new Date().toISOString()],
+      ['aiModel', 'gpt-4o-mini', new Date().toISOString()],
       ['aiApiKey', '', new Date().toISOString()]
     ]
     sheet.getRange(2, 1, defaultSettings.length, 3).setValues(defaultSettings)
