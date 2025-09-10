@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'react-hot-toast'
+import { notification } from 'antd'
 import { queryKeys } from '@/lib/query-client'
 import { responsesApi } from '@/lib/supabase-client'
 
@@ -56,10 +56,18 @@ export function useSubmitResponse() {
         queryKey: queryKeys.responsesCount(variables.refKey),
       })
       // Show success message
-      toast.success('Response submitted successfully')
+      notification.success({
+        message: 'Success',
+        description: 'Response submitted successfully',
+        placement: 'bottomRight',
+      })
     },
     onError: (error: Error) => {
-      toast.error(`Failed to submit response: ${error.message}`)
+      notification.error({
+        message: 'Submission Failed',
+        description: `Failed to submit response: ${error.message}`,
+        placement: 'bottomRight',
+      })
     },
   })
 }

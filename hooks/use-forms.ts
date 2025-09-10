@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'react-hot-toast'
+import { notification } from 'antd'
 import { queryKeys } from '@/lib/query-client'
 import { formsApi } from '@/lib/supabase-client'
 import { FormConfig } from '@/lib/types'
@@ -33,10 +33,18 @@ export function useUpsertForm() {
       // Update the specific form cache
       queryClient.setQueryData(queryKeys.form(data.refKey), data)
       // Show success message
-      toast.success('Form saved successfully')
+      notification.success({
+        message: 'Form Saved',
+        description: 'Form saved successfully',
+        placement: 'bottomRight',
+      })
     },
     onError: (error: Error) => {
-      toast.error(`Failed to save form: ${error.message}`)
+      notification.error({
+        message: 'Save Failed',
+        description: `Failed to save form: ${error.message}`,
+        placement: 'bottomRight',
+      })
     },
   })
 }
@@ -53,10 +61,18 @@ export function useDeleteForm() {
       // Remove the specific form from cache
       queryClient.removeQueries({ queryKey: queryKeys.form(refKey) })
       // Show success message
-      toast.success('Form deleted successfully')
+      notification.success({
+        message: 'Form Deleted',
+        description: 'Form deleted successfully',
+        placement: 'bottomRight',
+      })
     },
     onError: (error: Error) => {
-      toast.error(`Failed to delete form: ${error.message}`)
+      notification.error({
+        message: 'Delete Failed',
+        description: `Failed to delete form: ${error.message}`,
+        placement: 'bottomRight',
+      })
     },
   })
 }

@@ -10,7 +10,6 @@ import {
   Modal as AntModal,
   Spin,
   Alert,
-  message,
   notification,
 } from 'antd'
 import type { ButtonProps, InputProps, SelectProps, CardProps } from 'antd'
@@ -110,12 +109,32 @@ export class ErrorBoundary extends React.Component<
   }
 }
 
-// Toast notifications
+// Toast notifications (now using notifications for bottom-right positioning)
 export const toast = {
-  success: (msg: string) => message.success(msg),
-  error: (msg: string) => message.error(msg),
-  warning: (msg: string) => message.warning(msg),
-  info: (msg: string) => message.info(msg),
+  success: (msg: string) => notification.success({
+    message: 'Success',
+    description: msg,
+    placement: 'bottomRight',
+    duration: 3,
+  }),
+  error: (msg: string) => notification.error({
+    message: 'Error',
+    description: msg,
+    placement: 'bottomRight',
+    duration: 4,
+  }),
+  warning: (msg: string) => notification.warning({
+    message: 'Warning',
+    description: msg,
+    placement: 'bottomRight',
+    duration: 4,
+  }),
+  info: (msg: string) => notification.info({
+    message: 'Info',
+    description: msg,
+    placement: 'bottomRight',
+    duration: 3,
+  }),
 }
 
 // Complex notifications

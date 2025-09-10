@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
+import { notification } from 'antd';
 import { useRouter } from 'next/navigation';
-import { toast } from 'react-hot-toast';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -38,12 +38,20 @@ export function AuthProvider({ children, adminKey }: { children: React.ReactNode
 
       if (response.ok) {
         setIsAuthenticated(false);
-        toast.success('Logged out successfully');
+        notification.success({
+          message: 'Logged Out',
+          description: 'Logged out successfully',
+          placement: 'bottomRight',
+        });
         router.push('/login');
         router.refresh();
       }
     } catch (error) {
-      toast.error('Failed to logout');
+      notification.error({
+        message: 'Logout Failed',
+        description: 'Failed to logout',
+        placement: 'bottomRight',
+      });
     }
   };
 

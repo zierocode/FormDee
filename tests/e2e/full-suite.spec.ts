@@ -787,6 +787,125 @@ test.describe('FormDee E2E Full Suite', () => {
   })
 })
 
+// ═══════════════════════════════════════════
+// DELETE FUNCTIONALITY TESTS
+// ═══════════════════════════════════════════
+
+test.describe('Delete Functionality', () => {
+  test('Delete form with confirmation dialog', async ({ page }) => {
+    await AdvancedTestHelpers.authenticateAdmin(page)
+    
+    const formRefKey = `delete-test-e2e-${Date.now()}`
+    
+    // Step 1: Create a test form
+    await page.click('button:has-text("Create New")')
+    await page.fill('[data-testid="form-title"], input[placeholder*="title"], input[value=""], input:not([type="hidden"])', 'Delete Test Form')
+    await page.fill('[data-testid="form-ref-key"], input[placeholder*="key"], input[placeholder*="reference"], input:not([readonly]):not([type="hidden"])', formRefKey)
+    
+    // Wait for form to be ready and save
+    await page.waitForTimeout(1000)
+    await page.click('button:has-text("Save")', { timeout: TEST_CONFIG.timeouts.element })
+    await page.waitForURL('**/builder', { timeout: TEST_CONFIG.timeouts.navigation })
+    
+    // Track for cleanup (in case test fails)
+    createdFormKeys.push(formRefKey)
+
+    // Step 2: Find the form in the list and click delete
+    const formCard = page.locator(`text="${formRefKey}"`).first()
+    await expect(formCard).toBeVisible({ timeout: TEST_CONFIG.timeouts.element })
+    
+    // Look for delete button (should be near duplicate button)
+    const deleteButton = formCard.locator('..').locator('button:has-text("Delete")').first()
+    await expect(deleteButton).toBeVisible({ timeout: TEST_CONFIG.timeouts.element })
+    await deleteButton.click()
+
+    // Step 3: Verify popconfirm appears with correct warnings
+    const popconfirm = page.locator('.ant-popover:visible', { hasText: 'Delete this form?' })
+    await expect(popconfirm).toBeVisible({ timeout: 5000 })
+    
+    // Verify warning content
+    await expect(popconfirm).toContainText('form configuration')
+    await expect(popconfirm).toContainText('form responses')
+    await expect(popconfirm).toContainText('uploaded files')
+    await expect(popconfirm).toContainText('cannot be undone')
+
+    // Step 4: Confirm deletion
+    await page.click('.ant-popover button:has-text("Delete")')
+    
+    // Step 5: Verify success message and form removal
+    await expect(page.locator('.ant-message:has-text("deleted successfully")')).toBeVisible({ timeout: 10000 })
+    
+    // Wait for list to update and verify form is removed
+    await page.waitForTimeout(2000)
+    await expect(formCard).not.toBeVisible({ timeout: 5000 })
+
+    // Remove from cleanup list since it's been deleted
+    createdFormKeys = createdFormKeys.filter(key => key !== formRefKey)
+  })
+
+  test('Delete form cancellation', async ({ page }) => {
+    await AdvancedTestHelpers.authenticateAdmin(page)
+    
+    const formRefKey = `cancel-delete-test-${Date.now()}`
+    
+    // Create a test form
+    await page.click('button:has-text("Create New")')
+    await page.fill('[data-testid="form-title"], input[placeholder*="title"], input[value=""], input:not([type="hidden"])', 'Cancel Delete Test')
+    await page.fill('[data-testid="form-ref-key"], input[placeholder*="key"], input[placeholder*="reference"], input:not([readonly]):not([type="hidden"])', formRefKey)
+    
+    await page.waitForTimeout(1000)
+    await page.click('button:has-text("Save")')
+    await page.waitForURL('**/builder')
+    createdFormKeys.push(formRefKey)
+
+    // Find and click delete button
+    const formCard = page.locator(`text="${formRefKey}"`).first()
+    await expect(formCard).toBeVisible()
+    
+    const deleteButton = formCard.locator('..').locator('button:has-text("Delete")').first()
+    await deleteButton.click()
+
+    // Verify popconfirm and cancel
+    const popconfirm = page.locator('.ant-popover:visible')
+    await expect(popconfirm).toBeVisible()
+    await page.click('.ant-popover button:has-text("Cancel")')
+    
+    // Verify form is still there
+    await page.waitForTimeout(1000)
+    await expect(formCard).toBeVisible()
+  })
+
+  test('Delete button styling and placement', async ({ page }) => {
+    await AdvancedTestHelpers.authenticateAdmin(page)
+    
+    // Should have at least one form in the list to test
+    const firstFormCard = page.locator('[data-testid="form-card"], .ant-card').first()
+    if (await firstFormCard.isVisible({ timeout: 5000 })) {
+      const deleteButton = firstFormCard.locator('button:has-text("Delete")').first()
+      
+      // Verify delete button is present and styled correctly
+      await expect(deleteButton).toBeVisible()
+      
+      // Verify it's a danger button (red styling)
+      const buttonClass = await deleteButton.getAttribute('class')
+      expect(buttonClass).toContain('ant-btn-dangerous')
+      
+      // Verify it has delete icon
+      await expect(deleteButton.locator('[data-icon="delete"]')).toBeVisible()
+      
+      // Verify it's positioned after duplicate button
+      const duplicateButton = firstFormCard.locator('button:has-text("Duplicate")').first()
+      if (await duplicateButton.isVisible()) {
+        const duplicateBox = await duplicateButton.boundingBox()
+        const deleteBox = await deleteButton.boundingBox()
+        
+        // Delete button should be to the right of duplicate button (or below in mobile)
+        expect(deleteBox?.x || 0).toBeGreaterThanOrEqual(duplicateBox?.x || 0)
+      }
+    }
+  })
+})
+
 test.afterEach(async ({ page }) => {
   try {
     await page.evaluate(() => {

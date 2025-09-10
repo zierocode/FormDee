@@ -15,8 +15,9 @@ export function AdminKeyGate({ children }: { children: ReactNode }) {
       try {
         const response = await fetch('/api/auth/check')
         if (!response.ok) {
-          // Not authenticated, redirect to login
-          router.push('/login?returnUrl=' + encodeURIComponent(window.location.pathname))
+          // Not authenticated, redirect to login with error message
+          const returnUrl = encodeURIComponent(window.location.pathname)
+          router.push(`/login?returnUrl=${returnUrl}&error=access_denied`)
           setLoading(false)
         } else {
           // Get admin key from API response
@@ -31,7 +32,8 @@ export function AdminKeyGate({ children }: { children: ReactNode }) {
         }
       } catch (error) {
         console.error('Auth check failed:', error)
-        router.push('/login?returnUrl=' + encodeURIComponent(window.location.pathname))
+        const returnUrl = encodeURIComponent(window.location.pathname)
+        router.push(`/login?returnUrl=${returnUrl}&error=access_denied`)
       }
     }
 

@@ -277,6 +277,130 @@ class ComprehensiveAPITestSuite extends APITestSuite {
       this.assert(response.status === 200 || response.status === 400, 
         'Should handle deeply nested structures');
     });
+
+    // Test 8: Form Deletion with File Cleanup
+    await this.runTest('Complete Form Deletion with File Cleanup', 'Forms-Delete', async () => {
+      const deleteTestRefKey = 'delete-test-' + Date.now();
+      
+      // Step 1: Create a form with file upload field
+      const formWithFiles = {
+        refKey: deleteTestRefKey,
+        title: 'Delete Test Form with Files',
+        description: 'This form will be deleted with all its data',
+        fields: [
+          { key: 'name', label: 'Name', type: 'text', required: true },
+          { key: 'document', label: 'Document', type: 'file', required: false, acceptedTypes: ['.pdf', '.doc'] }
+        ]
+      };
+
+      const createResponse = await this.makeRequest('/api/forms', {
+        method: 'POST',
+        headers: { 'x-admin-key': config.adminKey },
+        body: formWithFiles
+      });
+      this.assert(createResponse.status === 200 && createResponse.data.ok, 'Form should be created successfully');
+
+      // Step 2: Submit a response (simulated - in real scenario would have file)
+      const submitResponse = await this.makeRequest('/api/submit', {
+        method: 'POST',
+        body: {
+          refKey: deleteTestRefKey,
+          values: {
+            name: 'Test User',
+            document: 'https://storage.example.com/test-file.pdf' // Simulated file URL
+          }
+        }
+      });
+      
+      // Step 3: Delete the form completely
+      const deleteResponse = await this.makeRequest(`/api/forms?refKey=${encodeURIComponent(deleteTestRefKey)}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-key': config.adminKey }
+      });
+
+      this.assert(deleteResponse.status === 200 && deleteResponse.data.ok, 'Form should be deleted successfully');
+      this.assert(deleteResponse.data.summary, 'Delete response should include summary');
+      
+      // Verify deletion summary
+      const summary = deleteResponse.data.summary;
+      this.assert(summary.form === 1, 'Should delete exactly 1 form');
+      console.log(`    Deletion Summary: ${summary.responses} responses, ${summary.files} files deleted`);
+
+      // Step 4: Verify form is really deleted
+      const getDeletedResponse = await this.makeRequest(`/api/forms?refKey=${encodeURIComponent(deleteTestRefKey)}`);
+      this.assert(getDeletedResponse.status === 404 || !getDeletedResponse.data.ok, 'Deleted form should not be found');
+      
+      // Don't add to createdFormKeys since it's been deleted
+    });
+
+    // Test 9: Delete Non-existent Form
+    await this.runTest('Delete Non-existent Form', 'Forms-Delete', async () => {
+      const nonExistentRefKey = 'non-existent-' + Date.now();
+      
+      const deleteResponse = await this.makeRequest(`/api/forms?refKey=${encodeURIComponent(nonExistentRefKey)}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-key': config.adminKey }
+      });
+
+      // Should handle gracefully - either 404 or error response
+      this.assert(deleteResponse.status === 404 || deleteResponse.status === 400 || !deleteResponse.data.ok, 
+        'Should handle deletion of non-existent form gracefully');
+    });
+
+    // Test 10: Delete Form without Authentication
+    await this.runTest('Delete Form without Authentication', 'Forms-Delete', async () => {
+      const testRefKey = 'auth-delete-test-' + Date.now();
+      
+      // First create a form to attempt to delete
+      const createResponse = await this.makeRequest('/api/forms', {
+        method: 'POST',
+        headers: { 'x-admin-key': config.adminKey },
+        body: {
+          refKey: testRefKey,
+          title: 'Auth Test Form',
+          fields: [{ key: 'field1', label: 'Field 1', type: 'text' }]
+        }
+      });
+      this.assert(createResponse.status === 200, 'Form should be created for auth test');
+      this.createdFormKeys.push(testRefKey);
+
+      // Attempt to delete without authentication
+      const deleteResponse = await this.makeRequest(`/api/forms?refKey=${encodeURIComponent(testRefKey)}`, {
+        method: 'DELETE'
+        // No authentication headers
+      });
+
+      this.assert(deleteResponse.status === 401, 'Should require authentication for deletion');
+    });
+
+    // Test 11: Delete Form with Special Characters in RefKey
+    await this.runTest('Delete Form with Special Characters', 'Forms-Delete', async () => {
+      const specialRefKey = 'delete-test-ñiño-测试-' + Date.now();
+      
+      // Create form with special characters
+      const createResponse = await this.makeRequest('/api/forms', {
+        method: 'POST',
+        headers: { 'x-admin-key': config.adminKey },
+        body: {
+          refKey: specialRefKey,
+          title: 'Special Char Delete Test',
+          fields: [{ key: 'field1', label: 'Field 1', type: 'text' }]
+        }
+      });
+
+      if (createResponse.status === 200 && createResponse.data.ok) {
+        // If creation succeeded, test deletion
+        const deleteResponse = await this.makeRequest(`/api/forms?refKey=${encodeURIComponent(specialRefKey)}`, {
+          method: 'DELETE',
+          headers: { 'x-admin-key': config.adminKey }
+        });
+
+        this.assert(deleteResponse.status === 200, 'Should delete form with special characters');
+      } else {
+        // If creation failed, that's also valid behavior - just log it
+        console.log('    Special character form creation was rejected (expected behavior)');
+      }
+    });
   }
 
   // ═══════════════════════════════════════════

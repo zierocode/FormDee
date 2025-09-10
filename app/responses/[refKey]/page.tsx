@@ -27,12 +27,12 @@ import {
   Layout,
   Row,
   Col,
-  message,
+  notification,
 } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { format } from 'date-fns'
 import { useParams, useRouter } from 'next/navigation'
-import { AuthProvider } from '@/components/AuthProvider'
+import { AdminKeyGate } from '@/components/AdminKeyGate'
 
 interface Response {
   id: number
@@ -182,7 +182,11 @@ function ResponsesViewer() {
         setHasMore(newResponses.length === ITEMS_PER_PAGE)
       } catch (err: any) {
         setError(err.message)
-        message.error(`Failed to fetch responses: ${err.message}`)
+        notification.error({
+          message: 'Fetch Failed',
+          description: `Failed to fetch responses: ${err.message}`,
+          placement: 'bottomRight',
+        })
       } finally {
         setLoading(false)
         setTableLoading(false)
@@ -375,7 +379,11 @@ function ResponsesViewer() {
         : filteredResponses
 
     if (dataToExport.length === 0) {
-      message.warning('No data to export')
+      notification.warning({
+        message: 'No Data',
+        description: 'No data to export',
+        placement: 'bottomRight',
+      })
       return
     }
 
@@ -457,7 +465,11 @@ function ResponsesViewer() {
     a.click()
     window.URL.revokeObjectURL(url)
 
-    message.success(`Exported ${dataToExport.length} responses to CSV`)
+    notification.success({
+      message: 'Export Complete',
+      description: `Exported ${dataToExport.length} responses to CSV`,
+      placement: 'bottomRight',
+    })
   }
 
   if (loading && responses.length === 0) {
@@ -656,8 +668,8 @@ function ResponsesViewer() {
 
 export default function ResponsesPage() {
   return (
-    <AuthProvider adminKey="">
+    <AdminKeyGate>
       <ResponsesViewer />
-    </AuthProvider>
+    </AdminKeyGate>
   )
 }

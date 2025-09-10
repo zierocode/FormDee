@@ -4,7 +4,6 @@ import { AntdRegistry } from '@ant-design/nextjs-registry'
 import { ConfigProvider } from 'antd'
 import type { Metadata } from 'next'
 import localFont from 'next/font/local'
-import { Toaster } from 'react-hot-toast'
 import { ConditionalHeader } from '@/components/ConditionalHeader'
 import { ConditionalMain } from '@/components/ConditionalMain'
 import { QueryProvider } from '@/components/QueryProvider'
@@ -87,7 +86,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <QueryProvider>
           <AntdRegistry>
             <ConfigProvider theme={theme}>
-              <Toaster position="top-center" />
               <ConditionalHeader />
               <ConditionalMain>{children}</ConditionalMain>
             </ConfigProvider>

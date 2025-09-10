@@ -31,7 +31,7 @@ const { Dragger } = Upload
 
 export function FormRenderer({ refKey }: { refKey: string }) {
   // Use TanStack Query to fetch form data
-  const { data: form, isLoading, isError, error } = useFormQuery(refKey)
+  const { data: form, isLoading, isError } = useFormQuery(refKey)
 
   // Use TanStack Query mutation for form submission
   const submitMutation = useSubmitResponse()
@@ -264,19 +264,85 @@ export function FormRenderer({ refKey }: { refKey: string }) {
         <div
           style={{
             position: 'relative',
-            maxWidth: 600,
+            maxWidth: 480,
             margin: '0 auto',
             padding: '40px 20px',
+            display: 'flex',
+            alignItems: 'center',
+            minHeight: '100vh',
+            justifyContent: 'center',
           }}
         >
-          <Alert
-            message="Form Not Found"
-            description={
-              error?.message || 'The form could not be loaded. Please check the URL and try again.'
-            }
-            type="error"
-            showIcon
-          />
+          <Card
+            style={{
+              width: '100%',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+              borderRadius: 8,
+            }}
+            styles={{
+              body: {
+                padding: '28px 32px 24px',
+              },
+            }}
+          >
+            <Space direction="vertical" size={16} style={{ width: '100%' }}>
+              {/* Logo and branding */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  marginBottom: 4,
+                }}
+              >
+                <img
+                  src="/FormDee-logo.png"
+                  alt="FormDee Logo"
+                  width={72}
+                  height={72}
+                  style={{ marginBottom: 10 }}
+                />
+                <Title level={2} style={{ margin: '0 0 2px 0', fontSize: 26 }}>
+                  FormDee
+                </Title>
+                <Text type="secondary" style={{ fontSize: 16 }}>
+                  ฟอร์มดี
+                </Text>
+              </div>
+
+              {/* Form Not Found Message */}
+              <div style={{ textAlign: 'center' }}>
+                <Title level={4} style={{ margin: '0 0 6px 0', fontSize: 18 }}>
+                  Form Not Found • ไม่พบฟอร์ม
+                </Title>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
+                  The form you're looking for doesn't exist.
+                </Text>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                  ไม่พบฟอร์มที่คุณกำลังค้นหา
+                </Text>
+                <div style={{ marginTop: 10 }}>
+                  <Text code style={{ fontSize: 14, padding: '6px 12px' }}>
+                    Form Error
+                  </Text>
+                </div>
+              </div>
+
+              {/* Bilingual Info alert */}
+              <Alert
+                message={<span>What you can do • สิ่งที่คุณสามารถทำได้</span>}
+                description={
+                  <div>
+                    <div>Check the URL for typos or contact the form administrator</div>
+                    <div>ตรวจสอบ URL หรือติดต่อผู้ดูแลระบบ</div>
+                  </div>
+                }
+                type="warning"
+                showIcon
+                style={{ textAlign: 'left' }}
+              />
+            </Space>
+          </Card>
         </div>
       </div>
     )
@@ -510,9 +576,17 @@ function FormFieldRenderer({
               return (
                 <Select
                   {...controllerField}
+                  size="large"
                   placeholder={field.placeholder || `Select ${field.label}`}
                   options={field.options?.map((opt) => ({ label: opt, value: opt }))}
                   status={hasError ? ('error' as const) : undefined}
+                  style={{
+                    width: '100%',
+                    minHeight: 48,
+                  }}
+                  dropdownStyle={{
+                    padding: 4,
+                  }}
                 />
               )
 

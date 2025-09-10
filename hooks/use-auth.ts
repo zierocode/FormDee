@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
-import { toast } from 'react-hot-toast'
+import { notification } from 'antd'
 import { queryKeys } from '@/lib/query-client'
 
 // Hook to check authentication status
@@ -48,7 +48,11 @@ export function useLogin() {
       })
 
       // Show success message
-      toast.success('Login successful')
+      notification.success({
+        message: 'Login Successful',
+        description: 'Welcome back! You have been logged in successfully.',
+        placement: 'bottomRight',
+      })
 
       // Redirect to builder or return URL
       const returnUrl = new URLSearchParams(window.location.search).get('returnUrl') || '/builder'
@@ -56,7 +60,11 @@ export function useLogin() {
       router.refresh()
     },
     onError: (error: Error) => {
-      toast.error(error.message)
+      notification.error({
+        message: 'Login Failed',
+        description: error.message,
+        placement: 'bottomRight',
+      })
     },
   })
 }
@@ -87,13 +95,21 @@ export function useLogout() {
       queryClient.removeQueries({ queryKey: queryKeys.responses })
 
       // Show success message
-      toast.success('Logged out successfully')
+      notification.success({
+        message: 'Logged Out',
+        description: 'Logged out successfully',
+        placement: 'bottomRight',
+      })
 
       // Redirect to login
       router.push('/login')
     },
     onError: (error: Error) => {
-      toast.error(`Logout failed: ${error.message}`)
+      notification.error({
+        message: 'Logout Failed',
+        description: `Logout failed: ${error.message}`,
+        placement: 'bottomRight',
+      })
     },
   })
 }

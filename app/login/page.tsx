@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, Suspense, useEffect } from 'react'
 import { LockOutlined } from '@ant-design/icons'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Input, Button, Card, Typography, Space, Spin } from 'antd'
+import { Input, Button, Card, Typography, Space, Spin, notification } from 'antd'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useForm, Controller } from 'react-hook-form'
-import { toast } from 'react-hot-toast'
 import { z } from 'zod'
 
 const { Title, Text } = Typography
@@ -27,8 +26,21 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const returnUrl = searchParams.get('returnUrl') || '/builder'
+  const error = searchParams.get('error')
 
   const [isLoading, setIsLoading] = useState(false)
+
+  // Show access denied message if redirected from protected page
+  useEffect(() => {
+    if (error === 'access_denied') {
+      notification.error({
+        message: 'Access Denied',
+        description: 'Please log in to access this page.',
+        placement: 'bottomRight',
+        duration: 5,
+      })
+    }
+  }, [error])
 
   // React Hook Form setup
   const {
@@ -58,14 +70,26 @@ function LoginForm() {
       const data = await response.json()
 
       if (response.ok) {
-        toast.success('Login successful')
+        notification.success({
+          message: 'Login Successful',
+          description: 'Welcome back! You have been logged in successfully.',
+          placement: 'bottomRight',
+        })
         router.push(returnUrl)
         router.refresh()
       } else {
-        toast.error(data.error || 'Invalid admin key')
+        notification.error({
+          message: 'Login Failed',
+          description: data.error || 'Invalid admin key',
+          placement: 'bottomRight',
+        })
       }
     } catch (error) {
-      toast.error('An error occurred. Please try again.')
+      notification.error({
+        message: 'Login Error',
+        description: 'An error occurred. Please try again.',
+        placement: 'bottomRight',
+      })
     } finally {
       setIsLoading(false)
     }

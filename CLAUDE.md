@@ -19,6 +19,14 @@ This project is **production-ready** and **feature-complete** with AI-powered fo
 - ✅ **International Support** - Unicode handling and multi-language forms
 - ✅ **Data Migration Tools** - Smart handling of form structure changes
 
+### ✅ Recent Improvements (v1.2.1)
+
+- ✅ **Enhanced Form Builder** - Added delete functionality with comprehensive warnings in edit mode  
+- ✅ **Consistent Notifications** - All messages now use bottom-right notification placement for better UX
+- ✅ **Improved Error Pages** - 404 and form not found pages now use consistent, beautiful design
+- ✅ **Enhanced Authentication Flow** - Better error messaging for unauthorized access attempts
+- ✅ **UI Polish** - Fixed button labels and improved form validation feedback
+
 ## Overview
 
 A dynamic form builder application with Supabase backend. Forms are stored in Supabase database and responses are saved with file uploads to Cloudflare R2.

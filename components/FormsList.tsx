@@ -11,6 +11,7 @@ import {
   ClockCircleOutlined,
   BarChartOutlined,
   LinkOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons'
 import {
   List,
@@ -22,9 +23,10 @@ import {
   Card,
   Spin,
   Empty,
-  message,
+  notification,
   Tooltip,
   Divider,
+  Popconfirm,
 } from 'antd'
 import { useForms } from '@/hooks/use-forms'
 import { useResponseStats } from '@/hooks/use-responses'
@@ -136,6 +138,7 @@ export function FormsList() {
   const [copiedRefKey, setCopiedRefKey] = useState<string | null>(null)
   const [loadingEdit, setLoadingEdit] = useState<string | null>(null)
   const [loadingDuplicate, setLoadingDuplicate] = useState<string | null>(null)
+  const [loadingDelete, setLoadingDelete] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -199,10 +202,18 @@ export function FormsList() {
       const formUrl = `${window.location.origin}/f/${encodeURIComponent(refKey)}`
       await navigator.clipboard.writeText(formUrl)
       setCopiedRefKey(refKey)
-      message.success('Form URL copied to clipboard!')
+      notification.success({
+        message: 'Success',
+        description: 'Form URL copied to clipboard!',
+        placement: 'bottomRight',
+      })
       setTimeout(() => setCopiedRefKey(null), 2000)
     } catch (error) {
-      message.error('Failed to copy URL')
+      notification.error({
+        message: 'Copy Failed',
+        description: 'Failed to copy URL',
+        placement: 'bottomRight',
+      })
     }
   }
 
@@ -225,12 +236,57 @@ export function FormsList() {
         sessionStorage.setItem(`duplicate_${refKey}`, JSON.stringify(formData))
         window.location.href = `/builder?duplicate=${encodeURIComponent(refKey)}`
       } else {
-        message.error('Failed to load form data: Form not found')
+        notification.error({
+          message: 'Form Not Found',
+          description: 'Failed to load form data: Form not found',
+          placement: 'bottomRight',
+        })
         setLoadingDuplicate(null)
       }
     } catch (error: any) {
-      message.error(`Failed to load form data: ${error.message}`)
+      notification.error({
+        message: 'Load Failed',
+        description: `Failed to load form data: ${error.message}`,
+        placement: 'bottomRight',
+      })
       setLoadingDuplicate(null)
+    }
+  }
+
+  // Handle delete button click with loading animation
+  async function handleDeleteClick(refKey: string) {
+    setLoadingDelete(refKey)
+
+    try {
+      const response = await fetch(`/api/forms?refKey=${encodeURIComponent(refKey)}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      })
+
+      const result = await response.json()
+
+      if (result.ok) {
+        notification.success({
+          message: 'Form Deleted',
+          description: `Form "${refKey}" deleted successfully`,
+          placement: 'bottomRight',
+        })
+        // Refetch the forms list to update UI
+        refetch()
+      } else {
+        throw new Error(result.error?.message || 'Failed to delete form')
+      }
+    } catch (error: any) {
+      notification.error({
+        message: 'Delete Failed',
+        description: `Failed to delete form: ${error.message}`,
+        placement: 'bottomRight',
+      })
+    } finally {
+      setLoadingDelete(null)
     }
   }
 
@@ -342,6 +398,37 @@ export function FormsList() {
                           Duplicate
                         </Button>
                       </Tooltip>
+                      <Popconfirm
+                        title="Delete this form?"
+                        description={
+                          <div>
+                            <p>This action will permanently delete:</p>
+                            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                              <li>The form configuration</li>
+                              <li>All form responses</li>
+                              <li>All uploaded files from storage</li>
+                            </ul>
+                            <p style={{ color: '#ff4d4f', fontWeight: 'bold', margin: 0 }}>
+                              This cannot be undone!
+                            </p>
+                          </div>
+                        }
+                        placement="topRight"
+                        okText="Delete"
+                        okType="danger"
+                        cancelText="Cancel"
+                        onConfirm={() => handleDeleteClick(item.refKey)}
+                      >
+                        <Tooltip title="Delete form and all data">
+                          <Button
+                            danger
+                            icon={<DeleteOutlined />}
+                            loading={loadingDelete === item.refKey}
+                          >
+                            Delete
+                          </Button>
+                        </Tooltip>
+                      </Popconfirm>
                     </Space>
                     <Space size="small">
                       <ViewResponsesButton refKey={item.refKey} />

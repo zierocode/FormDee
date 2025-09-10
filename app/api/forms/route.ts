@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withApiAuth } from '@/lib/auth-supabase'
 import { ERROR_MESSAGES, HTTP_STATUS } from '@/lib/constants'
+import { deleteFromR2, extractKeyFromUrl } from '@/lib/r2-storage'
 import { supabase, FormRecord } from '@/lib/supabase'
 
 function errorResponse(message: string, code: number = HTTP_STATUS.BAD_REQUEST) {
@@ -164,14 +165,116 @@ async function handleDelete(req: NextRequest) {
       return errorResponse('Missing refKey parameter', HTTP_STATUS.BAD_REQUEST)
     }
 
-    // Delete from Supabase
-    const { error } = await supabase.from('Forms').delete().eq('refKey', refKey)
+    console.log(`[API] Starting deletion process for form: ${refKey}`)
 
-    if (error) {
-      throw new Error(error.message)
+    // Step 1: Get all responses to find uploaded files
+    const { data: responses, error: responseError } = await supabase
+      .from('Responses')
+      .select('id, formData, files')
+      .eq('refKey', refKey)
+
+    if (responseError) {
+      console.error('[API] Error fetching responses:', responseError)
+      // Continue with deletion even if we can't fetch responses
     }
 
-    return NextResponse.json({ ok: true, message: `Form ${refKey} deleted successfully` })
+    console.log(`[API] Found ${responses?.length || 0} responses for form ${refKey}`)
+
+    // Step 2: Delete all files from R2 storage
+    let filesDeleted = 0
+    let fileDeleteErrors = 0
+
+    if (responses && responses.length > 0) {
+      for (const response of responses) {
+        try {
+          // Check files field (newer format)
+          if (response.files && typeof response.files === 'object') {
+            const fileUrls = Object.values(response.files).flat()
+            for (const fileUrl of fileUrls) {
+              if (typeof fileUrl === 'string') {
+                const fileKey = extractKeyFromUrl(fileUrl)
+                if (fileKey) {
+                  const deleted = await deleteFromR2(fileKey)
+                  if (deleted) {
+                    filesDeleted++
+                    console.log(`[API] Deleted file: ${fileKey}`)
+                  } else {
+                    fileDeleteErrors++
+                    console.warn(`[API] Failed to delete file: ${fileKey}`)
+                  }
+                }
+              }
+            }
+          }
+
+          // Check formData for file URLs (older format)
+          if (response.formData && typeof response.formData === 'object') {
+            for (const [_key, value] of Object.entries(response.formData)) {
+              if (typeof value === 'string' && value.includes(process.env.R2_PUBLIC_URL || '')) {
+                const fileKey = extractKeyFromUrl(value)
+                if (fileKey) {
+                  const deleted = await deleteFromR2(fileKey)
+                  if (deleted) {
+                    filesDeleted++
+                    console.log(`[API] Deleted file from formData: ${fileKey}`)
+                  } else {
+                    fileDeleteErrors++
+                    console.warn(`[API] Failed to delete file from formData: ${fileKey}`)
+                  }
+                }
+              }
+            }
+          }
+        } catch (fileError) {
+          console.error(`[API] Error processing files for response ${response.id}:`, fileError)
+          fileDeleteErrors++
+        }
+      }
+    }
+
+    console.log(`[API] File deletion summary: ${filesDeleted} deleted, ${fileDeleteErrors} errors`)
+
+    // Step 3: Delete all responses
+    let responsesDeleted = 0
+    if (responses && responses.length > 0) {
+      const { error: deleteResponsesError, count } = await supabase
+        .from('Responses')
+        .delete()
+        .eq('refKey', refKey)
+
+      if (deleteResponsesError) {
+        console.error('[API] Error deleting responses:', deleteResponsesError)
+        throw new Error(`Failed to delete responses: ${deleteResponsesError.message}`)
+      }
+      
+      responsesDeleted = count || responses.length
+      console.log(`[API] Deleted ${responsesDeleted} responses`)
+    }
+
+    // Step 4: Delete the form itself
+    const { error: deleteFormError } = await supabase
+      .from('Forms')
+      .delete()
+      .eq('refKey', refKey)
+
+    if (deleteFormError) {
+      console.error('[API] Error deleting form:', deleteFormError)
+      throw new Error(`Failed to delete form: ${deleteFormError.message}`)
+    }
+
+    console.log(`[API] Successfully deleted form: ${refKey}`)
+
+    // Return success with summary
+    return NextResponse.json({
+      ok: true,
+      message: `Form "${refKey}" deleted successfully`,
+      summary: {
+        form: 1,
+        responses: responsesDeleted,
+        files: filesDeleted,
+        fileErrors: fileDeleteErrors,
+      },
+    })
   } catch (error: any) {
     console.error('[API] Forms DELETE error:', error)
     return errorResponse(

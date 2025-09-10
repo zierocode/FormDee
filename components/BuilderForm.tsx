@@ -8,23 +8,24 @@ import {
   ExportOutlined,
   CloseOutlined,
   QuestionCircleOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Button from 'antd/es/button'
 import Card from 'antd/es/card'
 import Form from 'antd/es/form'
 import Input from 'antd/es/input'
-import message from 'antd/es/message'
 import notification from 'antd/es/notification'
 import Popconfirm from 'antd/es/popconfirm'
 import Space from 'antd/es/space'
 import Spin from 'antd/es/spin'
 import Switch from 'antd/es/switch'
 import Typography from 'antd/es/typography'
+import { useRouter } from 'next/navigation'
 import { createPortal } from 'react-dom'
 import { useForm, Controller } from 'react-hook-form'
 import { useForms, useUpsertForm } from '@/hooks/use-forms'
-import { useResponseCount } from '@/hooks/use-responses'
+import { useResponseStats } from '@/hooks/use-responses'
 import { FormConfig, FormField } from '@/lib/types'
 import { formConfigSchema, type FormConfigData } from '@/lib/validation'
 import { FieldEditor } from './FieldEditor'
@@ -50,8 +51,7 @@ export function BuilderForm({
   aiGeneratedForm,
   saveButtonContainer,
 }: Props) {
-  const [messageApi, contextHolder] = message.useMessage()
-  const [notificationApi, notificationContextHolder] = notification.useNotification({
+  const [notificationApi, contextHolder] = notification.useNotification({
     placement: 'bottomRight',
     duration: 3,
   })
@@ -66,7 +66,7 @@ export function BuilderForm({
 
   // TanStack Query hooks
   const { data: formsData } = useForms()
-  const { data: responseCount } = useResponseCount(refKeyHint || initial?.refKey || '')
+  const { data: responseStats } = useResponseStats(refKeyHint || initial?.refKey || '')
   const upsertFormMutation = useUpsertForm()
 
   // React Hook Form setup
@@ -151,24 +151,34 @@ export function BuilderForm({
         type="primary"
         icon={<SaveOutlined />}
         loading={upsertFormMutation.isPending}
+        disabled={!watchedValues.title?.trim() || !watchedValues.refKey?.trim()}
         onClick={async () => {
           // Get current form values
           const formValues = form.getValues()
 
           // Basic validation
           if (!formValues.title?.trim()) {
-            messageApi.error('Form title is required')
+            notificationApi.error({
+              message: 'Validation Error',
+              description: 'Form title is required',
+            })
             return
           }
 
           if (!formValues.refKey?.trim()) {
-            messageApi.error('Form URL is required')
+            notificationApi.error({
+              message: 'Validation Error',
+              description: 'Form URL is required',
+            })
             return
           }
 
           // If no fields exist, still allow save (empty form is valid)
           if (fields.length === 0) {
-            messageApi.warning('Form has no fields yet, but will be saved')
+            notificationApi.warning({
+              message: 'No Fields',
+              description: 'Form has no fields yet, but will be saved',
+            })
           }
 
           // Create complete form data including fields
@@ -280,7 +290,10 @@ export function BuilderForm({
     if ((mode === 'create' || refChanged) && data.refKey.trim()) {
       const exists = formsData?.some((f) => f.refKey === data.refKey)
       if (exists) {
-        messageApi.error('URL already exists. Choose another.')
+        notificationApi.error({
+          message: 'Duplicate URL',
+          description: 'URL already exists. Choose another.',
+        })
         return
       }
     }
@@ -299,7 +312,10 @@ export function BuilderForm({
         window.location.href = `/builder/${encodeURIComponent(data.refKey)}`
       }
     } catch (error: any) {
-      messageApi.error(error?.message || 'Failed to save form')
+      notificationApi.error({
+        message: 'Save Failed',
+        description: error?.message || 'Failed to save form',
+      })
     }
   }
 
@@ -325,10 +341,16 @@ export function BuilderForm({
           description: 'Slack test message sent successfully!',
         })
       } else {
-        messageApi.error(data.error || 'Test failed')
+        notificationApi.error({
+          message: 'Slack Test Failed',
+          description: data.error || 'Test failed',
+        })
       }
     } catch (error: any) {
-      messageApi.error(error.message || 'Test failed')
+      notificationApi.error({
+        message: 'Slack Test Failed',
+        description: error.message || 'Test failed',
+      })
     }
   }
 
@@ -344,7 +366,51 @@ export function BuilderForm({
       })
       setTimeout(() => setCopySuccess(false), 2000)
     } catch (error) {
-      messageApi.error('Failed to copy URL')
+      notificationApi.error({
+        message: 'Copy Failed',
+        description: 'Failed to copy URL',
+      })
+    }
+  }
+
+  // Delete form handler matching FormsList logic
+  const [loadingDelete, setLoadingDelete] = useState(false)
+  const router = useRouter()
+  
+  const handleDeleteClick = async () => {
+    if (!initial?.refKey) return
+    
+    setLoadingDelete(true)
+    try {
+      const response = await fetch(`/api/forms?refKey=${encodeURIComponent(initial.refKey)}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      })
+
+      const result = await response.json()
+
+      if (result.ok) {
+        notificationApi.success({
+          message: 'Form Deleted',
+          description: `Form "${initial.refKey}" deleted successfully`,
+          placement: 'bottomRight',
+        })
+        // Navigate back to forms list
+        router.push('/builder')
+      } else {
+        throw new Error(result.error?.message || 'Failed to delete form')
+      }
+    } catch (error: any) {
+      notificationApi.error({
+        message: 'Delete Failed',
+        description: `Failed to delete form: ${error.message}`,
+        placement: 'bottomRight',
+      })
+    } finally {
+      setLoadingDelete(false)
     }
   }
 
@@ -364,7 +430,6 @@ export function BuilderForm({
   return (
     <>
       {contextHolder}
-      {notificationContextHolder}
       {/* Render header buttons (Discard + Save) via portal */}
       {saveButtonPortalContainer && createPortal(<HeaderButtons />, saveButtonPortalContainer)}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '24px' }}>
@@ -567,7 +632,7 @@ export function BuilderForm({
           {/* Form URL Card */}
           {watchedValues.refKey && (
             <Card
-              title={<span style={{ color: '#fff' }}>Form URL</span>}
+              title={<span style={{ color: '#fff' }}>Form URL and Tools</span>}
               size="small"
               style={{ marginTop: 16 }}
               styles={{
@@ -608,11 +673,38 @@ export function BuilderForm({
                         (window.location.href = `/responses/${encodeURIComponent(watchedValues.refKey)}`)
                       }
                     >
-                      View Responses{' '}
-                      {responseCount !== undefined && responseCount !== null
-                        ? `(${responseCount})`
-                        : ''}
+                      View Response ({responseStats?.count || 0})
                     </Button>
+                    <Popconfirm
+                      title="Delete this form?"
+                      description={
+                        <div>
+                          <p>This action will permanently delete:</p>
+                          <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                            <li>The form configuration</li>
+                            <li>All form responses</li>
+                            <li>All uploaded files from storage</li>
+                          </ul>
+                          <p style={{ color: '#ff4d4f', fontWeight: 'bold', margin: 0 }}>
+                            This cannot be undone!
+                          </p>
+                        </div>
+                      }
+                      placement="topRight"
+                      okText="Delete"
+                      okType="danger"
+                      cancelText="Cancel"
+                      onConfirm={handleDeleteClick}
+                    >
+                      <Button
+                        block
+                        danger
+                        icon={<DeleteOutlined />}
+                        loading={loadingDelete}
+                      >
+                        Delete
+                      </Button>
+                    </Popconfirm>
                   </>
                 )}
               </Space>

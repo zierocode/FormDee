@@ -1,0 +1,128 @@
+'use client'
+
+import { HomeOutlined, ArrowLeftOutlined } from '@ant-design/icons'
+import { Card, Typography, Alert, Space, Button } from 'antd'
+import Image from 'next/image'
+import Link from 'next/link'
+
+const { Title, Text } = Typography
+
+export default function NotFoundPage() {
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Ant Design-inspired background pattern */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundImage: `
+          radial-gradient(circle at 20% 80%, rgba(24, 144, 255, 0.1) 0%, transparent 50%),
+          radial-gradient(circle at 80% 20%, rgba(24, 144, 255, 0.08) 0%, transparent 50%),
+          radial-gradient(circle at 40% 40%, rgba(24, 144, 255, 0.05) 0%, transparent 50%)
+        `,
+          pointerEvents: 'none',
+        }}
+      />
+
+      <Card
+        style={{
+          width: '100%',
+          maxWidth: 480,
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.08)',
+          borderRadius: 8,
+        }}
+        styles={{
+          body: {
+            padding: '28px 32px 24px',
+          },
+        }}
+      >
+        <Space direction="vertical" size={16} style={{ width: '100%' }}>
+          {/* Logo and branding */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              marginBottom: 4,
+            }}
+          >
+            <Image
+              src="/FormDee-logo.png"
+              alt="FormDee Logo"
+              width={72}
+              height={72}
+              style={{ marginBottom: 10 }}
+            />
+            <Title level={2} style={{ margin: '0 0 2px 0', fontSize: 26 }}>
+              FormDee
+            </Title>
+            <Text type="secondary" style={{ fontSize: 16 }}>
+              ฟอร์มดี
+            </Text>
+          </div>
+
+          {/* 404 Message */}
+          <div style={{ textAlign: 'center' }}>
+            <Title level={4} style={{ margin: '0 0 6px 0', fontSize: 18 }}>
+              Page Not Found • ไม่พบหน้า
+            </Title>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
+              The page you're looking for doesn't exist.
+            </Text>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+              ไม่พบหน้าที่คุณกำลังค้นหา
+            </Text>
+            <div style={{ marginTop: 10 }}>
+              <Text code style={{ fontSize: 14, padding: '6px 12px' }}>
+                Error 404
+              </Text>
+            </div>
+          </div>
+
+          {/* Bilingual Info alert */}
+          <Alert
+            message={<span>What you can do • สิ่งที่คุณสามารถทำได้</span>}
+            description={
+              <div>
+                <div>Check the URL for typos or contact the form administrator</div>
+                <div>ตรวจสอบ URL หรือติดต่อผู้ดูแลระบบ</div>
+              </div>
+            }
+            type="warning"
+            showIcon
+            style={{ textAlign: 'left' }}
+          />
+
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+            <Link href="/" passHref>
+              <Button type="primary" icon={<HomeOutlined />}>
+                Go Home • กลับหน้าแรก
+              </Button>
+            </Link>
+            <Button 
+              icon={<ArrowLeftOutlined />}
+              onClick={() => history.back()}
+            >
+              Go Back • ย้อนกลับ
+            </Button>
+          </div>
+        </Space>
+      </Card>
+    </div>
+  )
+}
