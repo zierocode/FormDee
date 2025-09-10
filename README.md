@@ -249,14 +249,41 @@ npm run build:analyze    # Bundle analysis
 
 ## 🧪 Testing
 
-We maintain comprehensive test coverage:
+### 🏆 100% API Coverage with Interactive External Integration
 
-- **Unit Tests**: Component logic with Vitest
-- **Integration Tests**: API endpoints and hooks
-- **E2E Tests**: Complete user flows with Playwright
-- **Accessibility Tests**: Automated a11y checking
+We maintain **comprehensive test coverage with 4-tier architecture**:
 
-Run tests: `npm run test:all`
+```bash
+# === Core Test Suites ===
+npm run test:api:standard    # 24 core API tests (~1 min)
+npm run test:api:full        # 35 comprehensive tests + security (~5 min)
+npm run test:e2e:standard    # 4 essential E2E tests (~2 min)
+npm run test:e2e:full        # 25+ complete E2E tests (~5-10 min)
+
+# === Quick Commands ===
+npm run test:quick           # Critical tests only (~1 min)
+npm run test:all:standard    # Both standard suites (~3 min)
+npm run test:all:full        # All comprehensive tests (~15 min)
+```
+
+### 🎯 Interactive External Integration Testing
+
+**NEW**: Secure, user-controlled testing of external services:
+
+- **Slack Webhook Testing** - Real notification testing with your webhook
+- **OpenAI API Testing** - AI integration validation with your API key
+- **Interactive Prompts** - Secure credential collection during test runs
+- **Optional Coverage** - 94.3% without credentials, 100% with your keys
+
+**Test Categories:**
+
+- ✅ **API Tests**: All 13 endpoints, security, performance, edge cases
+- ✅ **Unit Tests**: Component logic with Vitest
+- ✅ **E2E Tests**: Complete user flows with Playwright
+- ✅ **Integration Tests**: External services with real API calls
+- ✅ **Security Tests**: SQL injection, XSS, malicious input validation
+
+**Run complete test suite:** `npm run test:all:full`
 
 ## 📚 Documentation
 
