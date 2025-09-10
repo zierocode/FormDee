@@ -16,7 +16,7 @@ const { Text } = Typography
 interface AIPromptModalProps {
   isOpen: boolean
   onClose: () => void
-  onGenerate: (formData: any) => void
+  onGenerate: (_formData: any) => void
   adminKey?: string
 }
 

@@ -6,7 +6,7 @@ import { ERROR_MESSAGES } from '@/lib/constants'
 interface Props {
   children: ReactNode
   fallback?: ReactNode
-  onError?: (error: Error, errorInfo: ErrorInfo) => void
+  onError?: (_error: Error, _errorInfo: ErrorInfo) => void
 }
 
 interface State {
@@ -39,17 +39,12 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-[400px] flex items-center justify-center">
-          <div className="text-center space-y-4 p-6 max-w-md">
-            <div className="text-red-500 text-5xl">⚠️</div>
+        <div className="flex min-h-[400px] items-center justify-center">
+          <div className="max-w-md space-y-4 p-6 text-center">
+            <div className="text-5xl text-red-500">⚠️</div>
             <h2 className="text-xl font-semibold text-gray-900">Something went wrong</h2>
-            <p className="text-gray-600">
-              {this.state.error?.message || ERROR_MESSAGES.GENERIC}
-            </p>
-            <button
-              onClick={this.handleReset}
-              className="btn-secondary"
-            >
+            <p className="text-gray-600">{this.state.error?.message || ERROR_MESSAGES.GENERIC}</p>
+            <button onClick={this.handleReset} className="btn-secondary">
               Try again
             </button>
           </div>

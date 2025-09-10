@@ -21,7 +21,7 @@ class ApiCache {
   set(key: string, data: any, ttl: number) {
     const str = JSON.stringify(data)
     const size = new Blob([str]).size
-    
+
     // Remove old entry if exists
     if (this.cache.has(key)) {
       const old = this.cache.get(key)!
@@ -39,7 +39,7 @@ class ApiCache {
     this.cache.set(key, {
       data,
       expires: Date.now() + ttl,
-      size
+      size,
     })
     this.currentSize += size
   }
@@ -47,13 +47,13 @@ class ApiCache {
   get(key: string): any | null {
     const entry = this.cache.get(key)
     if (!entry) return null
-    
+
     if (Date.now() > entry.expires) {
       this.currentSize -= entry.size
       this.cache.delete(key)
       return null
     }
-    
+
     return entry.data
   }
 
@@ -117,13 +117,13 @@ export class OptimizedApiClient {
   private connectionPool = new ConnectionPool()
   private defaultTimeout = 30000 // 30 seconds
   private defaultRetries = 3
-  
+
   // Default cache TTLs for different operations
   private defaultTTLs = {
     forms: 5 * 60 * 1000, // 5 minutes for form configs
     sheets: 10 * 60 * 1000, // 10 minutes for sheet metadata
     submit: 0, // No caching for submissions
-    default: 60 * 1000 // 1 minute default
+    default: 60 * 1000, // 1 minute default
   }
 
   constructor() {
@@ -161,36 +161,36 @@ export class OptimizedApiClient {
     if (!cacheOptions.force && ttl > 0) {
       const cached = this.cache.get(cacheKey)
       if (cached !== null) {
-        console.log(`[Cache HIT] ${url}`)
+        // Cache hit
         return cached
       }
     }
 
     // Deduplicate concurrent requests
     return this.deduplicator.dedupe(cacheKey, async () => {
-      console.log(`[API Request] ${url}`)
-      
+      // API request
+
       // Execute with retry logic
       const response = await retry(
         async () => {
           const controller = this.connectionPool.acquire()
-          
+
           try {
             // Add timeout
             const timeoutId = setTimeout(() => controller.abort(), timeout)
-            
+
             const res = await fetch(url, {
               ...fetchOptions,
-              signal: controller.signal
+              signal: controller.signal,
             })
-            
+
             clearTimeout(timeoutId)
             this.connectionPool.release(controller)
-            
+
             if (!res.ok && res.status >= 500) {
               throw new Error(`Server error: ${res.status}`)
             }
-            
+
             return res
           } catch (error) {
             this.connectionPool.release(controller)
@@ -204,7 +204,7 @@ export class OptimizedApiClient {
           maxDelay: 10000,
           onRetry: (error, attempt) => {
             console.warn(`[Retry ${attempt}/${retries}] ${url}:`, error.message)
-          }
+          },
         }
       )
 
@@ -221,7 +221,7 @@ export class OptimizedApiClient {
       // Cache successful responses
       if (response.ok && ttl > 0) {
         this.cache.set(cacheKey, data, ttl)
-        console.log(`[Cache SET] ${url} (TTL: ${ttl}ms)`)
+        // Cache set
       }
 
       return data
@@ -229,10 +229,10 @@ export class OptimizedApiClient {
   }
 
   // Batch multiple requests
-  async fetchBatch<T = any>(requests: Array<{ url: string; options?: RequestOptions }>): Promise<T[]> {
-    return Promise.all(
-      requests.map(({ url, options }) => this.fetch<T>(url, options))
-    )
+  async fetchBatch<T = any>(
+    requests: Array<{ url: string; options?: RequestOptions }>
+  ): Promise<T[]> {
+    return Promise.all(requests.map(({ url, options }) => this.fetch<T>(url, options)))
   }
 
   // Clear cache

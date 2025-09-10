@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     if (supabaseError) {
       // If no settings exist yet, return empty settings
       if (supabaseError.code === 'PGRST116') {
-        console.log('No settings found, returning defaults')
+        // No settings found, returning defaults
         return NextResponse.json({
           aiModel: 'gpt-5-mini',
           apiKey: '',

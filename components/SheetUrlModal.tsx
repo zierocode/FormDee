@@ -10,7 +10,7 @@ import { FormField } from '@/lib/types'
 type SheetUrlModalProps = {
   isOpen: boolean
   onClose: () => void
-  onConfirm: (url: string, sheetName: string) => void
+  onConfirm: (_url: string, _sheetName: string) => void
   initialUrl?: string
   currentFields?: FormField[]
 }
@@ -87,7 +87,7 @@ export function SheetUrlModal({
     async (isRefresh = false, preselectedSheetOverride?: string) => {
       // Prevent concurrent validations
       if (isValidating) {
-        console.log('Validation already in progress, skipping')
+        // DEBUG: 'Validation already in progress, skipping')
         return
       }
 
@@ -98,10 +98,10 @@ export function SheetUrlModal({
         return
       }
 
-      console.log('Validating spreadsheet ID:', id)
-      console.log('Current initialSheetName before validation:', initialSheetName)
-      console.log('Current selectedSheet before validation:', selectedSheet)
-      console.log('PreselectedSheetOverride:', preselectedSheetOverride)
+      // DEBUG: 'Validating spreadsheet ID:', id)
+      // DEBUG: 'Current initialSheetName before validation:', initialSheetName)
+      // DEBUG: 'Current selectedSheet before validation:', selectedSheet)
+      // DEBUG: 'PreselectedSheetOverride:', preselectedSheetOverride)
 
       // Capture the initial sheet name at the start of validation to preserve it
       // Use the override parameter if provided (for initial load), otherwise use current state
@@ -119,7 +119,7 @@ export function SheetUrlModal({
 
       try {
         const res = await adminFetch<any>(`/api/forms/sheets?id=${encodeURIComponent(id)}`)
-        console.log('Sheet validation response:', res)
+        // DEBUG: 'Sheet validation response:', res)
 
         // First check if the request was successful
         if (!res.ok && res.error) {
@@ -176,7 +176,7 @@ Common causes:
           metaData = metaData.data
         }
 
-        console.log('Extracted metadata:', metaData)
+        // DEBUG: 'Extracted metadata:', metaData)
 
         // Check if sheets exist in the response
         if (!metaData || !metaData.sheets) {
@@ -207,13 +207,10 @@ Next steps:
 
         // Auto-select sheet if available
         if (meta.sheets && Array.isArray(meta.sheets) && meta.sheets.length > 0) {
-          console.log(
-            'Available sheets:',
-            meta.sheets.map((s) => s.name)
-          )
-          console.log('Current initialSheetName:', initialSheetName)
-          console.log('Current selectedSheet:', selectedSheet)
-          console.log('Preserved initialSheetName:', preservedInitialSheetName)
+          // DEBUG: Available sheets
+          // DEBUG: 'Current initialSheetName:', initialSheetName)
+          // DEBUG: 'Current selectedSheet:', selectedSheet)
+          // DEBUG: 'Preserved initialSheetName:', preservedInitialSheetName)
 
           // First priority: use the preserved initial sheet name from the saved configuration
           if (
@@ -221,30 +218,27 @@ Next steps:
             meta.sheets.find((s) => s.name === preservedInitialSheetName)
           ) {
             setSelectedSheet(preservedInitialSheetName)
-            console.log(
-              '✅ Selected preserved initial sheet from saved config:',
-              preservedInitialSheetName
-            )
+            // DEBUG: Selected preserved initial sheet from saved config
           }
           // Second priority: use the current initial sheet name if it still exists
           else if (initialSheetName && meta.sheets.find((s) => s.name === initialSheetName)) {
             setSelectedSheet(initialSheetName)
-            console.log('✅ Selected initial sheet from saved config:', initialSheetName)
+            // DEBUG: '✅ Selected initial sheet from saved config:', initialSheetName)
           }
           // Third priority: keep currently selected sheet if it exists
           else if (selectedSheet && meta.sheets.find((s) => s.name === selectedSheet)) {
             // Keep the current selection if it exists in the sheets
-            console.log('✅ Keeping pre-selected sheet:', selectedSheet)
+            // DEBUG: '✅ Keeping pre-selected sheet:', selectedSheet)
           }
           // Fallback: select the first available sheet
           else {
             const firstSheet = meta.sheets[0].name
             setSelectedSheet(firstSheet)
-            console.log('⚠️ Fallback: Selected first sheet:', firstSheet)
-            console.log('Reason: No preserved or current sheet name found in available sheets')
+            // DEBUG: '⚠️ Fallback: Selected first sheet:', firstSheet)
+            // DEBUG: 'Reason: No preserved or current sheet name found in available sheets')
           }
         } else {
-          console.log('Empty or invalid sheets array:', meta.sheets)
+          // DEBUG: 'Empty or invalid sheets array:', meta.sheets)
           setError(
             'No sheets found in the spreadsheet. The spreadsheet might be empty or the Apps Script might not have proper access.'
           )
@@ -265,7 +259,7 @@ Next steps:
 
   useEffect(() => {
     if (isOpen) {
-      console.log('Modal opening with initialUrl:', initialUrl)
+      // DEBUG: 'Modal opening with initialUrl:', initialUrl)
       // Parse the initial URL to handle the #sheet= format
       let urlToUse = initialUrl
       let preselectedSheet = ''
@@ -277,7 +271,7 @@ Next steps:
         if (parts[1]) {
           preselectedSheet = decodeURIComponent(parts[1])
         }
-        console.log('Parsed URL parts:', { urlToUse, preselectedSheet })
+        // DEBUG: 'Parsed URL parts:', { urlToUse, preselectedSheet })
       }
 
       setIsProgrammaticUrlChange(true)
@@ -288,7 +282,7 @@ Next steps:
       setError(null)
       setValidationStatus('idle')
 
-      console.log('Set initial sheet name to:', preselectedSheet)
+      // DEBUG: 'Set initial sheet name to:', preselectedSheet)
 
       // Reset the flag after a brief delay to allow the input to update
       setTimeout(() => setIsProgrammaticUrlChange(false), 50)
@@ -325,8 +319,8 @@ Next steps:
   }
 
   function handleUrlChange(value: string) {
-    console.log('handleUrlChange called with value:', value)
-    console.log('isProgrammaticUrlChange:', isProgrammaticUrlChange)
+    // DEBUG: 'handleUrlChange called with value:', value)
+    // DEBUG: 'isProgrammaticUrlChange:', isProgrammaticUrlChange)
 
     setUrl(value)
     setValidationStatus('idle')
@@ -336,9 +330,9 @@ Next steps:
     // Only clear initial sheet name if this is a real user change, not programmatic
     if (!isProgrammaticUrlChange) {
       setInitialSheetName('') // Clear initial sheet when URL changes
-      console.log('Cleared initialSheetName because user changed URL')
+      // DEBUG: 'Cleared initialSheetName because user changed URL')
     } else {
-      console.log('Kept initialSheetName because this is programmatic change')
+      // DEBUG: 'Kept initialSheetName because this is programmatic change')
     }
 
     setError(null)

@@ -149,10 +149,7 @@ async function handlePost(req: NextRequest) {
       return errorResponse('Failed to save form submission', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
 
-    console.log('[SUBMIT API] Submission saved:', {
-      responseId: savedResponse.id,
-      refKey: body.refKey,
-    })
+    // Submission saved successfully
 
     // Return success response
     return NextResponse.json({

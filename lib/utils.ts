@@ -1,19 +1,19 @@
 /**
  * Debounce function to limit the rate at which a function can fire
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (..._args: any[]) => any>(
   func: T,
   wait: number
-): (...args: Parameters<T>) => void {
+): (..._args: Parameters<T>) => void {
   let timeoutId: NodeJS.Timeout | null = null
 
-  return function debounced(...args: Parameters<T>) {
+  return function debounced(..._args: Parameters<T>) {
     if (timeoutId) {
       clearTimeout(timeoutId)
     }
 
     timeoutId = setTimeout(() => {
-      func(...args)
+      func(..._args)
       timeoutId = null
     }, wait)
   }
@@ -22,15 +22,15 @@ export function debounce<T extends (...args: any[]) => any>(
 /**
  * Throttle function to ensure a function is called at most once in a specified period
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (..._args: any[]) => any>(
   func: T,
   limit: number
-): (...args: Parameters<T>) => void {
+): (..._args: Parameters<T>) => void {
   let inThrottle = false
 
-  return function throttled(...args: Parameters<T>) {
+  return function throttled(..._args: Parameters<T>) {
     if (!inThrottle) {
-      func(...args)
+      func(..._args)
       inThrottle = true
       setTimeout(() => {
         inThrottle = false
@@ -76,16 +76,10 @@ export async function retry<T>(
     delay?: number
     maxDelay?: number
     factor?: number
-    onRetry?: (error: Error, attempt: number) => void
+    onRetry?: (_error: Error, _attempt: number) => void
   } = {}
 ): Promise<T> {
-  const {
-    retries = 3,
-    delay = 1000,
-    maxDelay = 30000,
-    factor = 2,
-    onRetry,
-  } = options
+  const { retries = 3, delay = 1000, maxDelay = 30000, factor = 2, onRetry } = options
 
   let lastError: Error
 

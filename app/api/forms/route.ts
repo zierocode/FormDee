@@ -13,15 +13,10 @@ function errorResponse(message: string, code: number = HTTP_STATUS.BAD_REQUEST) 
 async function handleGet(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const refKey = searchParams.get('refKey')
-  const op = searchParams.get('op')
-
-  console.log('[FORMS API] GET request:', { refKey, op, url: req.url })
 
   try {
     // Public endpoint for single form
     if (refKey) {
-      console.log('[FORMS API] Fetching single form:', refKey)
-
       const { data, error } = await supabase.from('Forms').select('*').eq('refKey', refKey).single()
 
       if (error || !data) {

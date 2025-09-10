@@ -128,7 +128,7 @@ export function FormRenderer({ refKey }: { refKey: string }) {
         const files = uploadList.map((item: any) => item.originFileObj).filter(Boolean)
 
         if (files.length > 0) {
-          console.log('Uploading files for field:', key)
+          // Uploading files for field
           const uploadedFiles: any[] = []
 
           for (const file of files) {

@@ -22,10 +22,10 @@ export function AdminKeyGate({ children }: { children: ReactNode }) {
           // Get admin key from API response
           const data = await response.json()
           if (data.adminKey) {
-            console.log('Found admin key from API:', data.adminKey.substring(0, 4) + '...')
+            // Admin key found
             setAdminKey(data.adminKey)
           } else {
-            console.warn('No admin key in API response')
+            // No admin key in API response
           }
           setLoading(false)
         }

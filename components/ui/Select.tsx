@@ -7,7 +7,7 @@ type Props = {
   options: Option[]
   value?: string | null
   placeholder?: string
-  onChange: (val: string) => void
+  onChange: (_val: string) => void
   className?: string
   disabled?: boolean
 }

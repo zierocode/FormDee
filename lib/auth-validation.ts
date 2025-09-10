@@ -4,15 +4,15 @@ const ADMIN_API_KEY = process.env.ADMIN_API_KEY
 const ADMIN_UI_KEY = process.env.ADMIN_UI_KEY
 
 export enum AuthSource {
-  HEADER = 'header',
-  COOKIE = 'cookie',
-  QUERY = 'query',
+  _HEADER = 'header',
+  _COOKIE = 'cookie',
+  _QUERY = 'query',
 }
 
 export enum KeyType {
-  API = 'api',
-  UI = 'ui',
-  NONE = 'none',
+  _API = 'api',
+  _UI = 'ui',
+  _NONE = 'none',
 }
 
 export interface AuthResult {
@@ -29,19 +29,19 @@ function extractAuthKey(req: NextRequest): { key: string | null; source: AuthSou
   // Priority 1: Header (typically for API access)
   const headerKey = req.headers.get('x-admin-key') || req.headers.get('x-api-key')
   if (headerKey) {
-    return { key: headerKey, source: AuthSource.HEADER }
+    return { key: headerKey, source: AuthSource._HEADER }
   }
 
   // Priority 2: Cookie (typically for UI access)
   const cookieKey = req.cookies.get('admin_key')?.value
   if (cookieKey) {
-    return { key: cookieKey, source: AuthSource.COOKIE }
+    return { key: cookieKey, source: AuthSource._COOKIE }
   }
 
   // Priority 3: Query param (for testing or simple API access)
   const queryKey = new URL(req.url).searchParams.get('adminKey')
   if (queryKey) {
-    return { key: queryKey, source: AuthSource.QUERY }
+    return { key: queryKey, source: AuthSource._QUERY }
   }
 
   return { key: null, source: null }
@@ -56,32 +56,32 @@ export function validateAdminKey(req: NextRequest, allowedTypes?: KeyType[]): Au
   const { key, source } = extractAuthKey(req)
 
   if (!key || !source) {
-    return { isValid: false, keyType: KeyType.NONE, source: null, key: null }
+    return { isValid: false, keyType: KeyType._NONE, source: null, key: null }
   }
 
   // If no specific types requested, enforce strict separation based on source
   if (!allowedTypes) {
     // Headers should use API key ONLY
-    if (source === AuthSource.HEADER) {
-      allowedTypes = [KeyType.API]
+    if (source === AuthSource._HEADER) {
+      allowedTypes = [KeyType._API]
     }
     // Cookies should use UI key ONLY
-    else if (source === AuthSource.COOKIE) {
-      allowedTypes = [KeyType.UI]
+    else if (source === AuthSource._COOKIE) {
+      allowedTypes = [KeyType._UI]
     }
     // Query params should use API key ONLY for API endpoints
     // NO BACKWARD COMPATIBILITY - STRICT ENFORCEMENT
     else {
-      allowedTypes = [KeyType.API]
+      allowedTypes = [KeyType._API]
     }
   }
 
   // Check if it's an API key
   if (ADMIN_API_KEY && key === ADMIN_API_KEY) {
-    const isAllowed = allowedTypes.includes(KeyType.API)
+    const isAllowed = allowedTypes.includes(KeyType._API)
     return {
       isValid: isAllowed,
-      keyType: KeyType.API,
+      keyType: KeyType._API,
       source,
       key: isAllowed ? key : null,
     }
@@ -89,30 +89,30 @@ export function validateAdminKey(req: NextRequest, allowedTypes?: KeyType[]): Au
 
   // Check if it's a UI key
   if (ADMIN_UI_KEY && key === ADMIN_UI_KEY) {
-    const isAllowed = allowedTypes.includes(KeyType.UI)
+    const isAllowed = allowedTypes.includes(KeyType._UI)
     return {
       isValid: isAllowed,
-      keyType: KeyType.UI,
+      keyType: KeyType._UI,
       source,
       key: isAllowed ? key : null,
     }
   }
 
-  return { isValid: false, keyType: KeyType.NONE, source, key: null }
+  return { isValid: false, keyType: KeyType._NONE, source, key: null }
 }
 
 /**
  * Validate that the request has API key (not UI key)
  */
 export function validateApiKey(req: NextRequest): AuthResult {
-  return validateAdminKey(req, [KeyType.API])
+  return validateAdminKey(req, [KeyType._API])
 }
 
 /**
  * Validate that the request has UI key (not API key)
  */
 export function validateUiKey(req: NextRequest): AuthResult {
-  return validateAdminKey(req, [KeyType.UI])
+  return validateAdminKey(req, [KeyType._UI])
 }
 
 /**
