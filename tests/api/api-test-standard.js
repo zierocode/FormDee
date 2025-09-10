@@ -17,7 +17,7 @@
 
 const http = require('http')
 const https = require('https')
-const TestDataCleanup = require('../utils/test-cleanup')
+const { UniversalCleanup } = require('../utils/universal-cleanup')
 const config = require('./config')
 
 // ANSI color codes for terminal output
@@ -44,7 +44,7 @@ class StandardAPITestSuite {
       endTime: null,
     }
     this.createdFormKeys = [] // Track forms to cleanup
-    this.cleanup = new TestDataCleanup()
+    this.cleanup = new UniversalCleanup({ testType: 'api', verbose: true })
   }
 
   // Utility: Make HTTP request
@@ -412,6 +412,18 @@ class StandardAPITestSuite {
     console.log(`${colors.bright}SETTINGS API TESTS${colors.reset}`)
     console.log(`${colors.blue}══════════════════════════════════════════${colors.reset}`)
 
+    // Save original settings before testing
+    let originalSettings = null
+    await this.runTest('Get Original Settings (for restoration)', 'Settings', async () => {
+      const response = await this.makeRequest('/api/settings', {
+        headers: { 'x-admin-key': config.adminApiKey },
+      })
+      
+      this.assert(response.status === 200, `Expected 200, got ${response.status}`)
+      originalSettings = response.data
+      console.log(`${colors.yellow}  ℹ️  Original settings saved for restoration${colors.reset}`)
+    })
+
     // Test 1: Get Settings (Authenticated)
     await this.runTest('Get Settings (Authenticated)', 'Settings', async () => {
       const response = await this.makeRequest('/api/settings', {
@@ -422,7 +434,7 @@ class StandardAPITestSuite {
       this.assert(response.data.aiModel !== undefined, 'Should return AI model setting')
     })
 
-    // Test 2: Update Settings
+    // Test 2: Update Settings (using test data, will be restored later)
     await this.runTest('Update Settings', 'Settings', async () => {
       const response = await this.makeRequest('/api/settings', {
         method: 'POST',
@@ -441,6 +453,20 @@ class StandardAPITestSuite {
       this.assert(response.status === 401, `Expected 401, got ${response.status}`)
       this.assert(response.data.error !== undefined, 'Unauthorized access should fail')
     })
+
+    // Restore original settings after testing
+    if (originalSettings) {
+      await this.runTest('Restore Original Settings', 'Settings', async () => {
+        const response = await this.makeRequest('/api/settings', {
+          method: 'POST',
+          headers: { 'x-admin-key': config.adminApiKey },
+          body: originalSettings,
+        })
+        
+        this.assert(response.status === 200, `Expected 200, got ${response.status}`)
+        console.log(`${colors.green}  ✓ Original settings restored successfully${colors.reset}`)
+      })
+    }
   }
 
   // ═══════════════════════════════════════════

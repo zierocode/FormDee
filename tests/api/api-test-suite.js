@@ -10,7 +10,7 @@ const http = require('http');
 const fs = require('fs').promises;
 const path = require('path');
 const config = require('./config');
-const TestDataCleanup = require('../utils/test-cleanup');
+const { UniversalCleanup } = require('../utils/universal-cleanup');
 
 // ANSI color codes for terminal output
 const colors = {
@@ -505,8 +505,8 @@ class APITestSuite {
     
     console.log(`\n${colors.yellow}🧹 Cleaning up test data...${colors.reset}`);
     
-    // Use the dedicated cleanup utility
-    const cleanup = new TestDataCleanup();
+    // Use the enhanced universal cleanup utility
+    const cleanup = new UniversalCleanup({ testType: 'api', verbose: true });
     
     // Clean up forms we created
     for (const formKey of this.createdFormKeys) {

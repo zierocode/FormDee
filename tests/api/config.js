@@ -85,7 +85,7 @@ module.exports = {
     settingsData: {
       valid: {
         aiModel: 'gpt-4o-mini',
-        apiKey: 'test-valid-api-key-for-testing', // Use dummy key for testing
+        apiKey: 'sk-test-dummy-key-for-testing-only', // Safer dummy key format
       },
       invalid: {
         aiModel: 'invalid-model',

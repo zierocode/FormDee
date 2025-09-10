@@ -1,11 +1,21 @@
-# FormDee - Dynamic Form Builder
+# FormDee v1.2.1
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-14.0+-black.svg)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-18.0+-blue.svg)](https://react.dev/)
-[![TanStack Query](https://img.shields.io/badge/TanStack_Query-5.0+-red.svg)](https://tanstack.com/query)
+## 🚀 Production-Ready Dynamic Form Builder
 
-A production-ready, type-safe dynamic form builder with real-time validation, intelligent caching, and comprehensive testing. Built with modern React patterns and enterprise-grade architecture.
+A comprehensive form building platform with AI-powered generation, Supabase integration, file uploads, and enterprise-grade testing infrastructure.
+
+![Version](https://img.shields.io/badge/version-1.2.1-blue)
+![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)
+![Tests](https://img.shields.io/badge/tests-35%20API%20+%2025%20E2E-green)
+![Coverage](https://img.shields.io/badge/API%20coverage-100%25-brightgreen)
+
+### ⚡ **Latest Updates (v1.2.1)**
+- ✅ **Smart E2E Head Mode**: Intelligent environment detection for optimal testing
+- ✅ **Enhanced Playwright Report Management**: Robust report generation and viewing  
+- ✅ **TypeScript Compliance**: 100% type safety with zero compilation errors
+- ✅ **Production Build Optimization**: Complete build pipeline with quality checks
+- ✅ **Fixed API Key Persistence**: Tests no longer save invalid keys to production
+- ✅ **Cross-Platform Testing**: Works in Claude Code, native environments, and headless modes
 
 ## ✨ Features
 

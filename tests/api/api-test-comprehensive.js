@@ -10,7 +10,7 @@ const http = require('http');
 const fs = require('fs').promises;
 const path = require('path');
 const config = require('./config');
-const TestDataCleanup = require('../utils/test-cleanup');
+const { UniversalCleanup } = require('../utils/universal-cleanup');
 
 // Import base test suite
 const APITestSuite = require('./api-test-suite');

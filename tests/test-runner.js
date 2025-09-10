@@ -32,8 +32,7 @@ const testConfigs = {
       'Forms CRUD (Create, Read, Update, List)',
       'Basic Form Submission',
       'Authentication & Authorization',
-      'Sheet Metadata Operations',
-      'GAS Connectivity',
+      'Supabase Database Operations',
       'Error Handling',
       'Basic Validation',
     ],
@@ -62,36 +61,37 @@ const testConfigs = {
   },
 
   'e2e-standard': {
-    name: 'End-to-End Standard Tests',
-    description: 'Basic user workflow tests using browser automation',
-    file: 'tests/form-submission.test.js',
+    name: 'End-to-End Standard Tests (Playwright)',
+    description: 'Essential user workflow tests with Playwright automation',
+    file: 'npx playwright test tests/e2e/standard-suite.spec.ts',
     tests: [
-      'Form Loading & Display',
-      'Form Field Filling',
-      'Form Submission Flow',
-      'Success Message Verification',
-      'Basic Error Handling',
-      'Navigation Tests',
+      'Home Page & Navigation',
+      'Authentication Flow',
+      'Form Builder Interface',
+      'Complete Form Creation & Submission',
+      'Settings Management',
+      'Form List & Management',
+      'Error Handling & User Feedback',
     ],
-    estimatedTime: '2 minutes',
-    testCount: 4,
+    estimatedTime: '3-5 minutes',
+    testCount: 8,
   },
 
   'e2e-full': {
-    name: 'End-to-End Full Tests',
-    description: 'Comprehensive E2E tests with all user scenarios',
-    file: 'tests/e2e-comprehensive.test.js',
-    create: true, // Will create this file
+    name: 'End-to-End Full Tests (Playwright)',
+    description: 'Comprehensive E2E tests covering all scenarios and edge cases',
+    file: 'npx playwright test tests/e2e/full-suite.spec.ts',
     tests: [
-      'All Standard E2E Tests',
-      'Form Builder UI Tests',
-      'Field Validation Tests',
-      'Multi-step Form Tests',
-      'File Upload Tests',
-      'Responsive Design Tests',
-      'Browser Compatibility',
-      'Accessibility Tests',
-      'Performance Metrics',
+      'Advanced Form Builder Tests',
+      'Complex Field Types & Validation',
+      'Drag & Drop Field Reordering',
+      'File Upload Functionality',
+      'Performance & Load Testing',
+      'Mobile Responsive Design',
+      'Multi-browser Compatibility',
+      'Accessibility Compliance',
+      'Security Testing (XSS, SQL)',
+      'Network Interruption Recovery',
       'Error Recovery Scenarios',
     ],
     estimatedTime: '5-10 minutes',
@@ -442,8 +442,8 @@ ${colors.yellow}Total Duration: ${totalDuration}s${colors.reset}
 
   // Run cleanup utility
   async runCleanup(options = {}) {
-    const TestDataCleanup = require('./utils/test-cleanup')
-    const cleanup = new TestDataCleanup()
+    const { UniversalCleanup } = require('./utils/universal-cleanup')
+    const cleanup = new UniversalCleanup({ testType: 'mixed', verbose: true })
 
     console.log(
       `\n${colors.bright}${colors.cyan}╔═══════════════════════════════════════════════════════════════╗${colors.reset}`
@@ -458,7 +458,7 @@ ${colors.yellow}Total Duration: ${totalDuration}s${colors.reset}
     if (options.interactive) {
       await cleanup.interactiveCleanup()
     } else {
-      await cleanup.performFullCleanup()
+      await cleanup.performUniversalCleanup()
     }
   }
 

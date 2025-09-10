@@ -26,7 +26,7 @@ A dynamic form builder application with Supabase backend. Forms are stored in Su
 ## Tech Stack
 
 - **Frontend**: Next.js 14 with TypeScript
-- **Backend**: Google Apps Script (GAS)
+- **Backend**: Next.js API Routes
 - **Database**: Supabase (PostgreSQL)
 - **File Storage**: Cloudflare R2
 - **Styling**: Tailwind CSS
@@ -71,8 +71,6 @@ A dynamic form builder application with Supabase backend. Forms are stored in Su
   setup-deployment.js  # Interactive deployment setup
   docker-deploy.js     # Automated Docker deployment
   docker-manage.js     # Docker container management
-/apps-script
-  Code.gs          # Production Google Apps Script backend
 ```
 
 ## Key Features
@@ -119,10 +117,22 @@ A dynamic form builder application with Supabase backend. Forms are stored in Su
 ## Environment Variables
 
 ```env
-GAS_BASE_URL=https://script.google.com/macros/s/DEPLOYMENT_ID/exec
 ADMIN_API_KEY=your-api-key
 ADMIN_UI_KEY=your-ui-key
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
+
+# Supabase Configuration
+SUPABASE_URL=your-supabase-url
+SUPABASE_ANON_KEY=your-supabase-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+
+# Cloudflare R2 Configuration  
+R2_ACCOUNT_ID=your-account-id
+R2_ACCESS_KEY_ID=your-access-key-id
+R2_SECRET_ACCESS_KEY=your-secret-access-key
+R2_BUCKET_NAME=your-bucket-name
+R2_PUBLIC_URL=your-public-url
+NEXT_PUBLIC_R2_PUBLIC_URL=your-public-url
 ```
 
 ## Database Structure (Supabase)
@@ -158,7 +168,7 @@ Stores all form submissions:
 ### Reference Key Validation (Fixed)
 
 **Issue**: The API was returning all forms when checking if a specific refKey exists.
-**Fix**: Updated `/app/api/forms/route.ts` to properly filter the GAS response and return 404 for non-existent forms.
+**Fix**: Updated `/app/api/forms/route.ts` to properly filter the API response and return 404 for non-existent forms.
 
 ### UI Improvements
 
@@ -184,6 +194,14 @@ Stores all form submissions:
 | `/api/upload`           | ✅ 100%      | File handling, validation, security         |
 | `/api/forms/test-slack` | ✅ 100%      | **Interactive** Slack webhook testing       |
 | `/api/settings/test`    | ✅ 100%      | **Interactive** OpenAI API validation       |
+
+### ⚡ **Recent Updates (v1.2.1)**
+- ✅ **Smart E2E Head Mode**: Intelligent environment detection for optimal testing
+- ✅ **Enhanced Playwright Report Management**: Robust report generation and viewing  
+- ✅ **TypeScript Compliance**: 100% type safety with zero compilation errors
+- ✅ **Production Build Optimization**: Complete build pipeline with quality checks
+- ✅ **Fixed API Key Persistence**: Tests no longer save invalid keys to production
+- ✅ **Cross-Platform Testing**: Works in Claude Code, native environments, and headless modes
 
 ### 🎯 Interactive External Integration Testing
 
@@ -223,6 +241,11 @@ npm run test:api:full        # 35 comprehensive API tests (~5 min)
 npm run test:e2e:standard    # 4 essential E2E tests (~2 min)
 npm run test:e2e:full        # 25+ complete E2E tests (~5-10 min)
 
+# === E2E Visual Testing (Smart Head Mode) ===
+npm run test:e2e:head           # Auto-detect: MCP or native Playwright
+npm run test:e2e:head:full      # Auto-detect with full test suite
+npm run test:e2e:head:verbose   # Auto-detect with detailed logging
+
 # === Combined Suites ===
 npm run test:all:standard    # Both standard suites (~3 min)
 npm run test:all:full        # All test suites (~15 min)
@@ -232,6 +255,11 @@ npm run test:all             # Complete test coverage
 npm run test:quick           # Critical tests only (~1 min)
 npm run test:ci              # CI/CD optimized testing
 npm run test:cleanup         # Manual cleanup of test data
+
+# === Enhanced Report Management ===
+npm run test:e2e:report        # Smart Playwright report management
+npm run test:e2e:report:fresh  # Generate fresh report and open
+npm run test:e2e:report:info   # Show detailed report status
 npm run test:safety-check    # Verify cleanup configuration
 ```
 
@@ -276,6 +304,81 @@ npm run test:safety-check    # Verify cleanup configuration
 - ✅ **Cleanup on Failure** - Cleanup runs even when tests fail
 - ✅ **Manual Cleanup Options** - Interactive and automated cleanup tools
 
+### 🎥 **Smart E2E Head Mode Testing**
+
+FormDee features **intelligent environment detection** that automatically chooses the best visual testing approach:
+
+#### **🤖 Automatic Detection**
+The system automatically detects your environment and chooses:
+- **🎭 Playwright MCP** - When running in Claude Code for optimal integration
+- **🌐 Native Playwright** - When running in regular environments  
+- **🕶️ Headless Mode** - When no display is available
+
+#### **🚀 Simplified Commands**
+```bash
+# Smart head mode - automatically detects best approach
+npm run test:e2e:head
+
+# Smart head mode with full test suite
+npm run test:e2e:head:full
+
+# Smart head mode with detailed environment detection
+npm run test:e2e:head:verbose
+```
+
+#### **🔍 How Auto-Detection Works**
+1. **Environment Scan**: Detects Claude Code vs regular environment
+2. **MCP Availability**: Checks for Playwright MCP tools
+3. **Display Check**: Verifies GUI/display capability
+4. **Playwright Status**: Confirms installation and functionality
+5. **Smart Selection**: Automatically chooses optimal method
+
+#### **📊 Detection Results**
+```bash
+# Example output:
+🔍 Detecting environment capabilities...
+   ✅ Claude Code environment detected
+   ✅ MCP capabilities available  
+   🎯 Recommendation: Use MCP for optimal experience
+
+# OR:
+🔍 Detecting environment capabilities...
+   ❌ MCP not available - will use native Playwright
+   ✅ Playwright installation found
+   ✅ Display capability detected
+   🎯 Recommendation: Use native Playwright
+```
+
+#### **🎯 Smart Features**
+- ✅ **Zero Configuration**: Works out-of-the-box in any environment
+- ✅ **Optimal Experience**: Always chooses the best available method
+- ✅ **Graceful Fallback**: Falls back to headless if no display
+- ✅ **Cross-Platform**: Windows, macOS, Linux support
+- ✅ **Automatic Slow Motion**: Enables visual observation when appropriate
+- ✅ **Error Recovery**: Clear troubleshooting when issues occur
+
+#### **🛠️ Manual Override (Advanced)**
+```bash
+# Force native Playwright (bypass auto-detection)
+npm run test:e2e:manual:standard
+npm run test:e2e:manual:full
+
+# Debug mode with step-by-step execution
+npm run test:e2e:debug
+
+# Interactive UI mode for manual control
+npm run test:e2e:ui
+
+# Validate head mode capabilities
+npm run test:head-mode
+```
+
+#### **💡 Benefits of Smart Detection**
+- **For Claude Code Users**: Seamlessly uses MCP for integrated debugging
+- **For Regular Users**: Falls back to native Playwright automatically  
+- **For CI/CD**: Automatically detects headless environments
+- **For Developers**: No need to remember different commands for different environments
+
 ### Development Commands
 
 ```bash
@@ -298,16 +401,15 @@ curl -s "http://localhost:3000/api/forms?refKey=example" | jq
 1. Navigate to `/builder`
 2. Click "Create Form"
 3. Fill in form details and unique reference key
-4. Configure Google Sheet for responses
-5. Add fields with validation rules
-6. Save form
+4. Add fields with validation rules
+5. Save form to Supabase database
 
 ### Testing Form Submission
 
 1. Navigate to `/f/{refKey}`
 2. Fill in form fields
 3. Submit form
-4. Check Google Sheet for response data - visit the Google Sheet URL to verify data was saved (both for form settings in master sheet and form submissions in response sheets)
+4. Check Supabase database for response data - responses are automatically stored in the `responses` table
 
 ### File Storage (Cloudflare R2)
 
@@ -323,7 +425,7 @@ Files uploaded through forms are stored in Cloudflare R2:
 1. **Authentication**: Admin operations require either `ADMIN_API_KEY` or `ADMIN_UI_KEY`
 2. **Database Access**: Ensure Supabase connection is properly configured
 3. **Reference Keys**: Must be unique across all forms
-4. **Response Sheets**: Can be shared between forms but headers will be overwritten based on the last saved form's fields
+4. **Database Storage**: All responses are stored in Supabase with proper data relationships and integrity
 
 ## Development Guidelines
 
@@ -351,7 +453,39 @@ Files uploaded through forms are stored in Cloudflare R2:
 
 - Clear Next.js cache with `rm -rf .next`
 - Check environment variables
-- Verify GAS deployment is up to date
+- Verify Supabase connection and credentials
+
+## 🎭 Smart E2E Testing System
+
+### Intelligent Environment Detection
+
+The smart E2E system automatically detects your environment and chooses the optimal testing approach:
+
+```bash
+# One command works everywhere
+npm run test:e2e:head
+```
+
+**Detection Logic:**
+- ✅ **Claude Code Environment**: Uses MCP Playwright tools for step-by-step visual testing
+- ✅ **Native Environment**: Falls back to standard Playwright with head mode
+- ✅ **Headless Environment**: Automatically switches to headless mode  
+- ✅ **Error Handling**: Provides clear guidance for missing dependencies
+
+### Enhanced Report Management
+
+```bash
+# Intelligent report handling
+npm run test:e2e:report        # Open existing report with smart port detection
+npm run test:e2e:report:fresh  # Generate fresh report and open
+npm run test:e2e:report:info   # Show detailed report status
+```
+
+**Features:**
+- 🔍 **Smart Port Detection**: Automatically finds available ports
+- 📊 **Report Validation**: Checks report existence and freshness
+- 🖥️ **Cross-Platform**: Works on macOS, Linux, and Windows
+- 🛠️ **Error Recovery**: Handles missing reports gracefully
 
 ## 🚢 Advanced Deployment System
 
@@ -363,7 +497,7 @@ npm run setup:deployment
 # ✅ Auto-generates secure ADMIN_API_KEY (32+ chars)
 # ✅ Interactively collects ADMIN_UI_KEY
 # ✅ Creates properly formatted .env file
-# ✅ Provides Google Apps Script setup guide
+# ✅ Configures Supabase and R2 integration
 # ✅ Offers deployment platform selection
 ```
 
@@ -405,11 +539,23 @@ npm run build:analyze     # Bundle size analysis
 ### Environment Variables (Production)
 
 ```env
-GAS_BASE_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
 ADMIN_API_KEY=your-secure-admin-api-key
 ADMIN_UI_KEY=your-secure-admin-ui-key
 NEXT_PUBLIC_BASE_URL=https://your-production-domain.com
 NODE_ENV=production
+
+# Supabase Configuration
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Cloudflare R2 Configuration
+R2_ACCOUNT_ID=your-account-id
+R2_ACCESS_KEY_ID=your-access-key-id
+R2_SECRET_ACCESS_KEY=your-secret-access-key
+R2_BUCKET_NAME=your-bucket-name
+R2_PUBLIC_URL=https://your-r2-domain.com
+NEXT_PUBLIC_R2_PUBLIC_URL=https://your-r2-domain.com
 ```
 
 ### Enterprise Security Features
