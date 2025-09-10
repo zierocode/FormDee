@@ -3,17 +3,43 @@ import type { ReactNode } from 'react'
 import { AntdRegistry } from '@ant-design/nextjs-registry'
 import { ConfigProvider } from 'antd'
 import type { Metadata } from 'next'
-import { Sarabun } from 'next/font/google'
+import localFont from 'next/font/local'
 import { Toaster } from 'react-hot-toast'
 import { ConditionalHeader } from '@/components/ConditionalHeader'
 import { ConditionalMain } from '@/components/ConditionalMain'
 import { QueryProvider } from '@/components/QueryProvider'
 
-const sarabun = Sarabun({
-  weight: ['300', '400', '500', '600', '700'],
-  subsets: ['latin', 'thai'],
-  display: 'swap',
+const sarabun = localFont({
+  src: [
+    {
+      path: '../public/fonts/sarabun-300.ttf',
+      weight: '300',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/sarabun-400.ttf',
+      weight: '400',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/sarabun-500.ttf',
+      weight: '500',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/sarabun-600.ttf',
+      weight: '600',
+      style: 'normal',
+    },
+    {
+      path: '../public/fonts/sarabun-700.ttf',
+      weight: '700',
+      style: 'normal',
+    },
+  ],
   variable: '--font-sarabun',
+  display: 'swap',
+  fallback: ['system-ui', '-apple-system', 'sans-serif'],
 })
 
 export const metadata: Metadata = {
@@ -48,7 +74,7 @@ export const viewport = {
 const theme = {
   token: {
     fontFamily:
-      'var(--font-sarabun), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      'var(--font-sarabun), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     colorPrimary: '#1890ff',
     borderRadius: 6,
   },

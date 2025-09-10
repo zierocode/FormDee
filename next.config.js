@@ -3,6 +3,9 @@ const nextConfig = {
   // Enable compression in production
   compress: true,
 
+  // Font optimization with graceful degradation
+  optimizeFonts: true,
+
   // Optimize images
   images: {
     formats: ['image/avif', 'image/webp'],
