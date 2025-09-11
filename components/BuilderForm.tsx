@@ -754,7 +754,7 @@ export function BuilderForm({
         // Function to refresh auth status
         const refreshAuthStatus = async () => {
           try {
-            const response = await fetch('/api/auth/google/status', {
+            const response = await fetch(`/api/auth/google/status?refKey=${currentRefKey}`, {
               credentials: 'include',
             })
             const data = await response.json()
