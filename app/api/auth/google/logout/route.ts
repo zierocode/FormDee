@@ -23,29 +23,31 @@ async function handlePost(req: NextRequest) {
       )
     }
 
-    // Get the email from the request body (optional - to logout specific account)
+    // Get the refKey from the request body
     const body = await req.json().catch(() => ({}))
-    const { email } = body
+    const { refKey } = body
 
-    if (email) {
-      // Delete specific Google auth by email
-      const { error: deleteError } = await supabase.from('GoogleAuth').delete().eq('email', email)
+    if (!refKey) {
+      return NextResponse.json(
+        { ok: false, error: 'Form refKey is required' },
+        { status: HTTP_STATUS.BAD_REQUEST }
+      )
+    }
 
-      if (deleteError) {
-        logger.error('[Google Logout] Failed to delete auth from database:', deleteError)
-      } else {
-        logger.info(`[Google Logout] Cleared Google auth for email: ${email}`)
-      }
+    // Remove Google auth from the specific form
+    const { error: updateError } = await supabase
+      .from('Forms')
+      .update({ google_auth_id: null })
+      .eq('refKey', refKey)
+
+    if (updateError) {
+      logger.error('[Google Logout] Failed to unlink auth from form:', updateError)
+      return NextResponse.json(
+        { ok: false, error: 'Failed to logout from Google' },
+        { status: HTTP_STATUS.INTERNAL_SERVER_ERROR }
+      )
     } else {
-      // If no email specified, clear all Google auth from database
-      const { error: deleteAllError } = await supabase
-        .from('GoogleAuth')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000') // Delete all (using impossible UUID)
-
-      if (!deleteAllError) {
-        logger.info('[Google Logout] Cleared all Google auth from database')
-      }
+      logger.info(`[Google Logout] Unlinked Google auth from form: ${refKey}`)
     }
 
     // Create response
@@ -56,14 +58,7 @@ async function handlePost(req: NextRequest) {
       },
     })
 
-    // Clear any legacy cookie (for cleanup)
-    response.cookies.set('google-session', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0, // Expire immediately
-      path: '/',
-    })
+    // No more cookie cleanup needed - auth is only in database
 
     return response
   } catch (error: any) {

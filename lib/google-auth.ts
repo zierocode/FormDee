@@ -1,5 +1,4 @@
 import { google } from 'googleapis'
-import { NextRequest } from 'next/server'
 
 export interface GoogleAuth {
   accessToken: string
@@ -30,7 +29,7 @@ export function createOAuth2Client() {
 /**
  * Generate Google OAuth2 authorization URL
  */
-export function getAuthUrl(isPopup: boolean = false): string {
+export function getAuthUrl(isPopup: boolean = false, refKey?: string): string {
   const oauth2Client = createOAuth2Client()
 
   const scopes = [
@@ -39,12 +38,18 @@ export function getAuthUrl(isPopup: boolean = false): string {
     'https://www.googleapis.com/auth/userinfo.profile',
   ]
 
+  // Create state parameter with both popup info and refKey
+  const state = JSON.stringify({
+    type: isPopup ? 'popup' : 'redirect',
+    refKey: refKey || null,
+  })
+
   const url = oauth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: scopes,
     prompt: 'consent', // Force consent to get refresh token
-    // Add state parameter to track popup vs redirect
-    state: isPopup ? 'popup' : 'redirect',
+    // Add state parameter to track popup vs redirect and refKey
+    state: state,
   })
 
   return url
@@ -143,44 +148,7 @@ export async function validateAccessToken(_accessToken: string): Promise<boolean
   return true
 }
 
-/**
- * Extract Google user session from cookies
- */
-export function getGoogleSessionFromCookies(req: NextRequest): GoogleAuth | null {
-  try {
-    const sessionCookie = req.cookies.get('google-session')?.value
-
-    if (!sessionCookie) {
-      return null
-    }
-
-    // In production, you should decrypt/verify this JWT
-    const sessionData = JSON.parse(atob(sessionCookie))
-
-    return {
-      accessToken: sessionData.accessToken,
-      refreshToken: sessionData.refreshToken,
-      expiryDate: sessionData.expiryDate,
-    }
-  } catch (error) {
-    console.error('Error parsing Google session:', error)
-    return null
-  }
-}
-
-/**
- * Create Google session cookie
- */
-export function createGoogleSessionCookie(auth: GoogleAuth, userInfo: GoogleUserInfo): string {
-  // In production, you should encrypt/sign this JWT
-  const sessionData = {
-    ...auth,
-    user: userInfo,
-    createdAt: Date.now(),
-  }
-
-  return btoa(JSON.stringify(sessionData))
-}
+// Cookie-based authentication functions removed - using database-only authentication
 
 /**
  * Get Google auth from database by form's refKey

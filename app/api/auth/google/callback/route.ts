@@ -22,8 +22,21 @@ async function handleGet(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const code = searchParams.get('code')
     const error = searchParams.get('error')
-    const state = searchParams.get('state')
-    const isPopup = state === 'popup'
+    const stateParam = searchParams.get('state')
+
+    // Parse the state parameter
+    let state: { type: string; refKey?: string } = { type: 'redirect' }
+    try {
+      if (stateParam) {
+        state = JSON.parse(stateParam)
+      }
+    } catch {
+      // Fallback for old format
+      state = { type: stateParam === 'popup' ? 'popup' : 'redirect' }
+    }
+
+    const isPopup = state.type === 'popup'
+    const refKey = state.refKey
 
     if (error) {
       console.error('[Google OAuth] Authorization error:', error)
@@ -83,9 +96,11 @@ async function handleGet(req: NextRequest) {
       .eq('email', userInfo.email)
       .single()
 
+    let googleAuthId: string
+
     if (existingAuth) {
       // Update existing auth
-      const { error: updateError } = await supabase
+      const { data: updatedAuth, error: updateError } = await supabase
         .from('GoogleAuth')
         .update({
           access_token: tokens.accessToken,
@@ -97,16 +112,18 @@ async function handleGet(req: NextRequest) {
           last_used_at: new Date().toISOString(),
         })
         .eq('id', existingAuth.id)
-        .select()
+        .select('id')
         .single()
 
       if (updateError) {
         console.error('[Google OAuth] Failed to update auth in database:', updateError)
         throw new Error('Failed to update authentication')
       }
+
+      googleAuthId = updatedAuth.id
     } else {
       // Create new auth
-      const { error: insertError } = await supabase
+      const { data: newAuth, error: insertError } = await supabase
         .from('GoogleAuth')
         .insert({
           email: userInfo.email,
@@ -116,12 +133,27 @@ async function handleGet(req: NextRequest) {
           refresh_token: tokens.refreshToken,
           expiry_date: tokens.expiryDate,
         })
-        .select()
+        .select('id')
         .single()
 
       if (insertError) {
         console.error('[Google OAuth] Failed to store auth in database:', insertError)
         throw new Error('Failed to store authentication')
+      }
+
+      googleAuthId = newAuth.id
+    }
+
+    // Link the Google auth to the specific form if refKey is provided
+    if (refKey) {
+      const { error: linkError } = await supabase
+        .from('Forms')
+        .update({ google_auth_id: googleAuthId })
+        .eq('refKey', refKey)
+
+      if (linkError) {
+        console.error('[Google OAuth] Failed to link auth to form:', linkError)
+        // Don't throw error here, auth was successful
       }
     }
 

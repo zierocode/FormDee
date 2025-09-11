@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withApiAuth } from '@/lib/auth-supabase'
 import { ERROR_MESSAGES, HTTP_STATUS } from '@/lib/constants'
-import { getGoogleSessionFromCookies } from '@/lib/google-auth'
+import { getGoogleAuthFromDatabase } from '@/lib/google-auth'
 import {
   testGoogleSheetsConnectionWithUser,
   testWriteGoogleSheet,
@@ -32,8 +32,15 @@ async function handlePost(req: NextRequest) {
       )
     }
 
-    // Get Google session from cookies
-    const googleSession = getGoogleSessionFromCookies(req)
+    if (!refKey) {
+      return NextResponse.json(
+        { ok: false, error: 'Form refKey is required' },
+        { status: HTTP_STATUS.BAD_REQUEST }
+      )
+    }
+
+    // Get Google session for this specific form
+    const googleSession = await getGoogleAuthFromDatabase(refKey)
 
     if (!googleSession || !googleSession.accessToken) {
       return NextResponse.json(

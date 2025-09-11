@@ -125,7 +125,10 @@ export function BuilderForm({
   useEffect(() => {
     const checkGoogleAuth = async () => {
       try {
-        const response = await fetch('/api/auth/google/status', {
+        const currentRefKey = mode === 'edit' ? initial?.refKey : watchedValues.refKey
+        if (!currentRefKey) return
+
+        const response = await fetch(`/api/auth/google/status?refKey=${currentRefKey}`, {
           credentials: 'include',
         })
         const data = await response.json()
@@ -176,7 +179,7 @@ export function BuilderForm({
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname)
     }
-  }, [notificationApi])
+  }, [notificationApi, mode, initial?.refKey, watchedValues.refKey])
 
   // Capture initial field structure and Google Sheet URL for change detection
   useEffect(() => {
@@ -716,7 +719,16 @@ export function BuilderForm({
   // Handle Google authentication with popup
   const handleGoogleAuth = async () => {
     try {
-      const response = await fetch('/api/auth/google?popup=true', {
+      const currentRefKey = mode === 'edit' ? initial?.refKey : watchedValues.refKey
+      if (!currentRefKey) {
+        notificationApi.error({
+          message: 'Error',
+          description: 'Please save the form first before setting up Google authentication',
+        })
+        return
+      }
+
+      const response = await fetch(`/api/auth/google?popup=true&refKey=${currentRefKey}`, {
         credentials: 'include',
       })
       const data = await response.json()
@@ -816,9 +828,22 @@ export function BuilderForm({
   // Handle Google logout
   const handleGoogleLogout = async () => {
     try {
+      const currentRefKey = mode === 'edit' ? initial?.refKey : watchedValues.refKey
+      if (!currentRefKey) {
+        notificationApi.error({
+          message: 'Error',
+          description: 'Cannot logout without form refKey',
+        })
+        return
+      }
+
       const response = await fetch('/api/auth/google/logout', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         credentials: 'include',
+        body: JSON.stringify({ refKey: currentRefKey }),
       })
       const data = await response.json()
 

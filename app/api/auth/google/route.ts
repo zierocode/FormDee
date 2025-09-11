@@ -34,12 +34,20 @@ async function handleGet(req: NextRequest) {
       )
     }
 
-    // Check if popup mode is requested
+    // Check if popup mode is requested and get refKey
     const { searchParams } = new URL(req.url)
     const isPopup = searchParams.get('popup') === 'true'
+    const refKey = searchParams.get('refKey')
 
-    // Generate authentication URL
-    const authUrl = getAuthUrl(isPopup)
+    if (!refKey) {
+      return NextResponse.json(
+        { ok: false, error: 'Form refKey is required for Google authentication' },
+        { status: HTTP_STATUS.BAD_REQUEST }
+      )
+    }
+
+    // Generate authentication URL with refKey in state
+    const authUrl = getAuthUrl(isPopup, refKey)
 
     return NextResponse.json({
       ok: true,

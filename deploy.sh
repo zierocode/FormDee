@@ -41,7 +41,7 @@ echo "   Memory limit set to: 4096MB"
 npm run build:production
 
 echo "🧹 Optimizing for production runtime..."
-npm prune --production
+npm prune --omit=dev
 
 echo "🔄 Reloading PM2 app: $PM2_APP..."
 # Create logs directory if it doesn't exist
