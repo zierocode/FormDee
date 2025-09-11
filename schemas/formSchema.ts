@@ -11,7 +11,23 @@ export const formConfigSchema = z.object({
     ),
   title: z.string().min(1, 'Form title is required'),
   description: z.string().optional(),
-  slackWebhookUrl: z.string().url('Invalid Slack webhook URL').optional(),
+  slackWebhookUrl: z
+    .string()
+    .optional()
+    .refine(
+      (val) => !val || val === '' || /^https:\/\/hooks\.slack\.com\/services\//.test(val),
+      'Invalid Slack webhook URL'
+    ),
+  googleSheetUrl: z
+    .string()
+    .optional()
+    .refine(
+      (val) =>
+        !val ||
+        val.trim() === '' ||
+        /^https:\/\/docs\.google\.com\/spreadsheets\/d\/[a-zA-Z0-9-_]+/.test(val),
+      'Invalid Google Sheets URL format'
+    ),
   fields: z.array(fieldSchema).min(1, 'At least one field is required'),
 })
 

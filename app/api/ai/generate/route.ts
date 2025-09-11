@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import OpenAI from 'openai'
 import { z } from 'zod'
 import { isAuthenticated } from '@/lib/auth-server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { logger } from '@/lib/logger'
+import { supabase } from '@/lib/supabase'
 import { FormField, FieldType } from '@/lib/types'
 
 const aiGenerateSchema = z.object({
@@ -17,7 +19,7 @@ interface AIFormResponse {
 
 // Get AI settings from database
 async function getAISettings() {
-  const { data, error } = await supabaseAdmin.from('Settings').select('*').eq('id', 1).single()
+  const { data, error } = await supabase.from('Settings').select('*').eq('id', 1).single()
 
   if (error) {
     throw new Error('AI configuration not found. Please configure AI settings first.')
@@ -82,56 +84,91 @@ Best Practices:
 Ensure the response is valid JSON only, no additional text.`
 }
 
-// Call the AI API to generate form
+// Call the AI API to generate form using OpenAI SDK
 async function generateFormWithAI(prompt: string): Promise<AIFormResponse> {
   const settings = await getAISettings()
   const systemPrompt = createFormGenerationPrompt(prompt)
 
-  try {
-    // Call AI API (currently supporting OpenAI-compatible endpoints)
-    // Future: Add support for other AI providers based on model type
+  // Initialize OpenAI client
+  const openai = new OpenAI({
+    apiKey: settings.apiKey,
+  })
 
+  try {
     // Determine the correct parameters based on model
     const isGPT5Model = settings.model.startsWith('gpt-5')
-    const tokenParams = isGPT5Model ? { max_completion_tokens: 2000 } : { max_tokens: 2000 }
+    const isGPT5Nano = settings.model === 'gpt-5-nano'
+    const isGPT5Mini = settings.model === 'gpt-5-mini'
 
-    // GPT-5 models only support default temperature (1)
-    const temperatureParams = isGPT5Model
-      ? {} // Use default temperature for GPT-5
-      : { temperature: 0.1 } // Low temperature for consistent, structured output
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${settings.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: settings.model, // Use exact model name from settings
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are a professional form builder AI. Always respond with valid JSON only, no additional text or formatting.',
-          },
-          {
-            role: 'user',
-            content: systemPrompt,
-          },
-        ],
-        ...temperatureParams,
-        ...tokenParams,
-        response_format: { type: 'json_object' },
-      }),
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      throw new Error(`AI API Error: ${error.error?.message || response.statusText}`)
+    // Configure parameters based on model type
+    const completionParams: any = {
+      model: settings.model,
+      messages: [
+        {
+          role: 'system',
+          content: isGPT5Model
+            ? 'You are a professional form builder AI. You MUST generate actual JSON content in your response. Do not use all tokens for reasoning - ensure you output the required JSON structure. Always respond with valid JSON only, no additional text or formatting.'
+            : 'You are a professional form builder AI. Always respond with valid JSON only, no additional text or formatting.',
+        },
+        {
+          role: 'user',
+          content: systemPrompt,
+        },
+      ],
+      response_format: { type: 'json_object' },
     }
 
-    const data = await response.json()
-    const aiResponse = data.choices[0].message.content
+    if (isGPT5Model) {
+      // GPT-5 models use max_completion_tokens and default temperature
+      if (isGPT5Nano) {
+        completionParams.max_completion_tokens = 2000
+      } else if (isGPT5Mini) {
+        completionParams.max_completion_tokens = 4000
+      } else {
+        completionParams.max_completion_tokens = 8000
+      }
+      // No temperature parameter for GPT-5 (uses default 1)
+    } else {
+      // GPT-4 and older models use max_tokens and custom temperature
+      completionParams.max_tokens = 2000
+      completionParams.temperature = 0.1
+    }
+
+    logger.info('Making API call with OpenAI SDK', {
+      model: settings.model,
+      tokenParams: isGPT5Model
+        ? { max_completion_tokens: completionParams.max_completion_tokens }
+        : { max_tokens: completionParams.max_tokens },
+      temperature: completionParams.temperature || 'default',
+    })
+
+    const completion = await openai.chat.completions.create(completionParams)
+
+    logger.debug('Full API response for model', { model: settings.model, completion })
+
+    const aiResponse = completion.choices[0]?.message?.content
+    if (!aiResponse || aiResponse.trim() === '') {
+      logger.error(
+        'AI returned empty content. Finish reason:',
+        completion.choices[0]?.finish_reason
+      )
+      logger.error('Usage details:', completion.usage)
+
+      // For GPT-5 models with reasoning tokens but empty content, provide a helpful error
+      if (
+        isGPT5Model &&
+        completion.usage?.completion_tokens_details?.reasoning_tokens &&
+        completion.usage.completion_tokens_details.reasoning_tokens > 0
+      ) {
+        throw new Error(
+          'AI model used reasoning tokens but generated no content. Try using GPT-4o instead of GPT-5 models for form generation.'
+        )
+      }
+
+      throw new Error('No response content from AI')
+    }
+
+    logger.debug('AI response content', { aiResponse })
 
     try {
       const parsedResponse = JSON.parse(aiResponse)
@@ -174,11 +211,11 @@ async function generateFormWithAI(prompt: string): Promise<AIFormResponse> {
         fields: parsedResponse.fields,
       }
     } catch (parseError) {
-      console.error('Failed to parse AI response:', aiResponse)
+      logger.error('Failed to parse AI response', { aiResponse })
       throw new Error('AI returned invalid JSON format')
     }
   } catch (error: any) {
-    console.error('AI generation error:', error)
+    logger.error('AI generation error', error)
     // Re-throw the error instead of falling back to mock data
     throw error
   }
@@ -235,14 +272,14 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(generatedForm)
     } catch (error: any) {
-      console.error('AI generation failed:', error)
+      logger.error('AI generation failed', error)
       return NextResponse.json(
         { error: error.message || 'Failed to generate form with AI' },
         { status: 500 }
       )
     }
   } catch (error: any) {
-    console.error('AI Generate error:', error)
+    logger.error('AI Generate error', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

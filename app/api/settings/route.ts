@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isAuthenticated } from '@/lib/auth-server'
-import { supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 // We'll use a dedicated settings table in Supabase
 // For now, we'll store settings as a single record with id = 1
@@ -18,16 +18,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // If adminKey is provided, validate it against ADMIN_API_KEY
+    // If adminKey is provided, validate it using Supabase Auth
     if (adminKey && !authenticated) {
-      const validApiKey = process.env.ADMIN_API_KEY
-      if (!validApiKey || adminKey !== validApiKey) {
+      const { validateApiKey } = await import('@/lib/auth-supabase')
+      const validation = await validateApiKey(adminKey, 'ui')
+      if (!validation.isValid) {
         return NextResponse.json({ error: 'Invalid admin key' }, { status: 401 })
       }
     }
 
     // Fetch settings from Supabase
-    const { data, error: supabaseError } = await supabaseAdmin
+    const { data, error: supabaseError } = await supabase
       .from('Settings')
       .select('*')
       .eq('id', 1)
@@ -69,10 +70,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // If adminKey is provided, validate it against ADMIN_API_KEY
+    // If adminKey is provided, validate it using Supabase Auth
     if (adminKey && !authenticated) {
-      const validApiKey = process.env.ADMIN_API_KEY
-      if (!validApiKey || adminKey !== validApiKey) {
+      const { validateApiKey } = await import('@/lib/auth-supabase')
+      const validation = await validateApiKey(adminKey, 'ui')
+      if (!validation.isValid) {
         return NextResponse.json({ error: 'Invalid admin key' }, { status: 401 })
       }
     }
@@ -86,7 +88,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if settings already exist
-    const { data: existingSettings } = await supabaseAdmin
+    const { data: existingSettings } = await supabase
       .from('Settings')
       .select('*')
       .eq('id', 1)
@@ -95,7 +97,7 @@ export async function POST(request: NextRequest) {
     let result
     if (existingSettings) {
       // Update existing settings
-      result = await supabaseAdmin
+      result = await supabase
         .from('Settings')
         .update({
           ai_model: aiModel,
@@ -107,7 +109,7 @@ export async function POST(request: NextRequest) {
         .single()
     } else {
       // Insert new settings
-      result = await supabaseAdmin
+      result = await supabase
         .from('Settings')
         .insert({
           id: 1,

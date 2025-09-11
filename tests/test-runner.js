@@ -42,7 +42,7 @@ const testConfigs = {
 
   'api-full': {
     name: 'API Full Tests',
-    description: 'Comprehensive API tests including all edge cases',
+    description: 'Comprehensive API tests including all edge cases and integrations',
     file: 'tests/api/api-test-comprehensive-updated.js',
     tests: [
       'All Standard API Tests',
@@ -51,13 +51,16 @@ const testConfigs = {
       'Security & Injection Tests',
       'Performance & Stress Tests',
       'Data Validation Edge Cases',
+      'GPT-5 Model Handling Tests',
+      'AI Token Exhaustion Detection',
+      'Google Sheets Integration Tests',
+      'Google Auth Flow Tests',
+      'Export/Import Response Tests',
       'Concurrency & Race Conditions',
       'Unicode & International Support',
-      'Binary Data Handling',
-      'Memory Leak Detection',
     ],
-    estimatedTime: '3-5 minutes',
-    testCount: '50+',
+    estimatedTime: '5-7 minutes',
+    testCount: '70+',
   },
 
   'e2e-standard': {

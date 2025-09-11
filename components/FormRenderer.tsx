@@ -295,6 +295,7 @@ export function FormRenderer({ refKey }: { refKey: string }) {
                   marginBottom: 4,
                 }}
               >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src="/FormDee-logo.png"
                   alt="FormDee Logo"

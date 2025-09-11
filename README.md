@@ -1,376 +1,345 @@
-# FormDee v1.2.1
+# FormDee v1.3.0
 
-## 🚀 Production-Ready Dynamic Form Builder
+## 🚀 Production-Ready Dynamic Form Builder with AI & Google Sheets
 
-A comprehensive form building platform with AI-powered generation, Supabase integration, file uploads, and enterprise-grade testing infrastructure.
+A comprehensive form building platform with AI-powered generation, Google Sheets integration, Supabase backend, file uploads to Cloudflare R2, and enterprise-grade testing infrastructure.
 
-![Version](https://img.shields.io/badge/version-1.2.1-blue)
+![Version](https://img.shields.io/badge/version-1.3.0-blue)
 ![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue)
-![Tests](https://img.shields.io/badge/tests-35%20API%20+%2025%20E2E-green)
+![Tests](https://img.shields.io/badge/tests-70%2B%20API%20+%2025%2B%20E2E-green)
 ![Coverage](https://img.shields.io/badge/API%20coverage-100%25-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-### ⚡ **Latest Updates (v1.2.1)**
-- ✅ **Smart E2E Head Mode**: Intelligent environment detection for optimal testing
-- ✅ **Enhanced Playwright Report Management**: Robust report generation and viewing  
-- ✅ **TypeScript Compliance**: 100% type safety with zero compilation errors
-- ✅ **Production Build Optimization**: Complete build pipeline with quality checks
-- ✅ **Fixed API Key Persistence**: Tests no longer save invalid keys to production
-- ✅ **Cross-Platform Testing**: Works in Claude Code, native environments, and headless modes
+### 🎉 **New in v1.3.0**
 
-## ✨ Features
+- 🤖 **Enhanced GPT-5 Model Support**: Intelligent handling of reasoning token exhaustion with helpful error messages
+- 📊 **Google Sheets Integration**: Full OAuth flow, validation, and export functionality
+- 🧪 **Comprehensive Test Coverage**: 70+ API tests including AI and Google Sheets integration
+- 🔐 **Google OAuth Authentication**: Secure authentication flow for Google services
+- 📝 **Improved Error Messages**: Clear, actionable error messages for better debugging
+- ⚡ **Performance Optimizations**: Enhanced caching and request handling
 
-- **AI-Powered Form Generation** - Natural language to form conversion
-- **Type-Safe Validation** - Zod schemas with real-time feedback
-- **Intelligent Caching** - TanStack Query for optimal performance
-- **Drag & Drop Builder** - Intuitive form construction
-- **Real-time Updates** - Optimistic UI with automatic sync
-- **File Upload Integration** - Secure file handling with cloud storage
-- **Comprehensive Testing** - Unit, integration, and E2E coverage
-- **Accessibility First** - WCAG compliant with keyboard navigation
-- **Production Ready** - Docker deployment with health checks
+## ✨ Core Features
 
-## 🚀 Tech Stack
+### Form Builder
 
-- **Framework**: Next.js 14 (App Router) + TypeScript
-- **Styling**: Tailwind CSS + Ant Design (AntD)
-- **Forms**: React Hook Form + Zod validation
-- **Data Fetching**: TanStack Query (React Query)
-- **Database**: Supabase (PostgreSQL)
-- **Drag & Drop**: hello-pangea/dnd
-- **Testing**: Vitest + React Testing Library + Playwright
+- **AI-Powered Generation** - Natural language to form conversion using OpenAI GPT models
+- **Drag & Drop Builder** - Intuitive visual form construction with real-time preview
+- **Field Types** - Text, email, number, date, textarea, select, radio, checkbox, file upload
+- **Advanced Validation** - Pattern matching, min/max values, required fields, custom rules
+- **Conditional Logic** - Show/hide fields based on user input
+
+### Backend & Storage
+
+- **Supabase Integration** - PostgreSQL database for forms and responses
+- **Cloudflare R2** - Secure file storage with public URL generation
+- **Google Sheets Export** - Export form responses directly to Google Sheets
+- **Slack Notifications** - Real-time notifications for form submissions
+
+### Authentication & Security
+
+- **Cookie-Based Auth** - Secure session management for admin access
+- **Google OAuth 2.0** - Secure authentication for Google services
+- **API Key Protection** - Multiple layers of API security
+- **Input Sanitization** - XSS and SQL injection protection
+
+### Testing & Quality
+
+- **Comprehensive Testing** - 70+ API tests, 25+ E2E tests
+- **Smart Test Runner** - Intelligent test environment detection
+- **Automatic Cleanup** - Test data cleanup with production safeguards
+- **Performance Metrics** - Request timing and optimization tracking
 
 ## 🏗️ Architecture
 
-This project follows **opinionated best practices**:
-
-### Forms & Validation
-
-- **Zod schemas** in `schemas/<feature>Form.ts`
-- **React Hook Form** with `zodResolver` for all forms
-- **Controller** components for complex AntD integrations
-- Real-time validation with accessibility support
-
-### Data Management
-
-- **TanStack Query** for all server state
-- Centralized query keys in `lib/queryKeys.ts`
-- Optimistic updates with automatic error recovery
-- SSR-friendly with hydration boundaries
-
-### UI & Styling
-
-- **Ant Design** as the primary component library
-- **Tailwind CSS** for utilities and layout
-- Consistent theming with AntD design tokens
-- Dark mode support with system preferences
-
-### State Management
-
-- **Server state**: TanStack Query only
-- **Local UI state**: React hooks (`useState`, `useReducer`)
-- **Form state**: React Hook Form
-- No global state library unless absolutely necessary
-
-## 📁 Project Structure
-
 ```
-├── app/                    # Next.js App Router
-│   ├── api/               # API routes
-│   ├── builder/           # Form builder pages
-│   └── f/[refKey]/        # Public form pages
-├── components/            # React components
-│   ├── forms/            # Form-related components
-│   ├── ui/               # Reusable UI components
-│   └── layout/           # Layout components
-├── hooks/                 # Custom React hooks
-├── lib/                  # Utilities and configurations
-│   ├── queryKeys.ts      # TanStack Query keys
-│   ├── supabase.ts       # Database client
-│   └── validation.ts     # Shared Zod schemas
-├── schemas/              # Form validation schemas
-├── types/                # TypeScript definitions
-├── docs/                 # Documentation
-├── DECISIONS/            # Architecture Decision Records
-└── tests/                # Test suites
+formdee/
+├── app/                      # Next.js 14 App Router
+│   ├── api/                 # API Routes
+│   │   ├── ai/generate/     # AI form generation
+│   │   ├── auth/            # Authentication endpoints
+│   │   │   ├── google/      # Google OAuth flow
+│   │   │   ├── login/       # Admin login
+│   │   │   └── logout/      # Session management
+│   │   ├── forms/           # Form CRUD operations
+│   │   │   ├── export-responses/  # Google Sheets export
+│   │   │   ├── test-google-sheet/ # Sheet validation
+│   │   │   └── test-slack/        # Slack webhook testing
+│   │   ├── submit/          # Form submission handlers
+│   │   │   └── supabase/    # Database submission
+│   │   ├── responses/       # Response data retrieval
+│   │   ├── settings/        # Configuration management
+│   │   └── upload/          # File upload to R2
+│   ├── builder/             # Form builder interface
+│   │   └── [refKey]/        # Edit existing forms
+│   ├── f/[refKey]/          # Public form display
+│   └── login/               # Admin authentication
+├── components/              # React Components
+│   ├── BuilderForm.tsx      # Main form builder
+│   ├── FormRenderer.tsx     # Public form display
+│   ├── FieldEditor.tsx      # Field configuration
+│   ├── FieldList.tsx        # Draggable field list
+│   └── ui/                  # Reusable UI components
+├── lib/                     # Core Libraries
+│   ├── supabase.ts          # Database client
+│   ├── google-auth.ts       # Google OAuth handler
+│   ├── google-sheets.ts     # Sheets API integration
+│   ├── auth-server.ts       # Server auth utilities
+│   └── types.ts             # TypeScript definitions
+├── hooks/                   # Custom React Hooks
+│   ├── use-forms.ts         # Form data management
+│   ├── use-settings.ts      # Settings management
+│   └── use-auth.ts          # Authentication state
+├── tests/                   # Test Suites
+│   ├── api/                 # API tests
+│   ├── e2e/                 # End-to-end tests
+│   └── utils/               # Test utilities
+└── docs/                    # Documentation
 ```
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+
-- npm/yarn/pnpm
-- Supabase account
+- Node.js 18+ and npm
+- Supabase account and project
+- OpenAI API key (for AI features)
+- Cloudflare R2 bucket (for file uploads)
+- Google Cloud Console project (for Google Sheets integration)
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/zierocode/FormDee.git
-cd FormDee
+git clone https://github.com/yourusername/formdee.git
+cd formdee
 
 # Install dependencies
 npm install
 
 # Set up environment variables
 cp .env.example .env
-# Edit .env with your Supabase and Cloudflare R2 credentials
+# Edit .env with your credentials
 
-# Set up Supabase database
+# Run database migrations
 npm run setup:supabase
 
 # Start development server
 npm run dev
 ```
 
-Visit `http://localhost:3000` to see the application.
-
 ### Environment Variables
 
+Create a `.env` file with the following:
+
 ```env
+# Admin Authentication
+ADMIN_API_KEY=your-secure-api-key-32-chars
+ADMIN_UI_KEY=your-secure-ui-key-32-chars
+
+# Base URL
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+
 # Supabase Configuration
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# Cloudflare R2 Storage (optional, for file uploads)
+# Cloudflare R2 Configuration
 R2_ACCOUNT_ID=your-account-id
-R2_ACCESS_KEY_ID=your-access-key
-R2_SECRET_ACCESS_KEY=your-secret-key
+R2_ACCESS_KEY_ID=your-access-key-id
+R2_SECRET_ACCESS_KEY=your-secret-access-key
 R2_BUCKET_NAME=your-bucket-name
-R2_PUBLIC_URL=https://your-domain.com
-NEXT_PUBLIC_R2_PUBLIC_URL=https://your-domain.com
+R2_PUBLIC_URL=https://your-r2-public-url.com
+NEXT_PUBLIC_R2_PUBLIC_URL=https://your-r2-public-url.com
 
-# Admin Authentication
-ADMIN_API_KEY=your-secure-admin-api-key-32-chars-min
-ADMIN_UI_KEY=your-secure-ui-key-32-chars-min
-
-# Application
-NEXT_PUBLIC_BASE_URL=http://localhost:3000
+# Google OAuth (Optional)
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/google/callback
 ```
 
-### Quick Database Setup
+## 📊 Database Schema
 
-FormDee includes an automated Supabase setup script:
+### Forms Table
 
-```bash
-# Automated setup (creates tables, policies, functions)
-npm run setup:supabase
-
-# Or run manually
-node scripts/setup-supabase.js
+```sql
+CREATE TABLE forms (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  refKey VARCHAR(255) UNIQUE NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  fields JSONB NOT NULL,
+  slackWebhookUrl TEXT,
+  googleSheetUrl TEXT,
+  createdAt TIMESTAMP DEFAULT NOW(),
+  updatedAt TIMESTAMP DEFAULT NOW()
+);
 ```
 
-This script will:
+### Responses Table
 
-- ✅ Create all required database tables
-- ✅ Set up Row Level Security policies
-- ✅ Create database functions for validation
-- ✅ Seed initial configuration data
-- ✅ Create an example contact form
-
-## 📋 Development Standards
-
-### Forms Implementation
-
-```typescript
-// 1. Create Zod schema
-// schemas/contactForm.ts
-export const contactFormSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email'),
-  message: z.string().min(10, 'Message too short'),
-})
-
-// 2. Use with React Hook Form
-const form = useForm<ContactFormData>({
-  resolver: zodResolver(contactFormSchema),
-  defaultValues: { name: '', email: '', message: '' },
-})
-
-// 3. Handle submission with TanStack Query
-const submitMutation = useMutation({
-  mutationFn: (data: ContactFormData) => submitContact(data),
-  onSuccess: () => toast.success('Form submitted!'),
-  onError: (error) => toast.error(error.message),
-})
+```sql
+CREATE TABLE responses (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  refKey VARCHAR(255) NOT NULL,
+  formData JSONB NOT NULL,
+  files JSONB,
+  ip VARCHAR(45),
+  userAgent TEXT,
+  submittedAt TIMESTAMP DEFAULT NOW(),
+  metadata JSONB,
+  FOREIGN KEY (refKey) REFERENCES forms(refKey)
+);
 ```
 
-### Data Fetching Pattern
+### Settings Table
 
-```typescript
-// hooks/useContacts.ts
-export function useContacts() {
-  return useQuery({
-    queryKey: queryKeys.contacts.list(),
-    queryFn: () => contactsApi.getAll(),
-    staleTime: 1000 * 60 * 5, // 5 minutes
-  })
-}
-
-export function useCreateContact() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: contactsApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.contacts.list(),
-      })
-    },
-  })
-}
-```
-
-### Component Naming
-
-Use canonical names without suffixes:
-
-- ✅ `FormRenderer.tsx`
-- ✅ `ContactForm.tsx`
-- ❌ `FormRendererAntd.tsx`
-- ❌ `ContactFormQuery.tsx`
-
-## 📝 Scripts
-
-```bash
-# Development
-npm run dev              # Start dev server
-npm run build            # Production build
-npm run start            # Start production server
-npm run typecheck        # TypeScript checking
-npm run lint             # ESLint
-npm run format           # Prettier
-
-# Testing
-npm run test             # Unit tests
-npm run test:e2e         # E2E tests
-npm run test:coverage    # Coverage report
-
-# Database
-npm run db:migrate       # Run migrations
-npm run db:seed          # Seed database
-npm run db:reset         # Reset database
-
-# Deployment
-npm run deploy:docker    # Docker deployment
-npm run build:analyze    # Bundle analysis
+```sql
+CREATE TABLE settings (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  api_key TEXT,
+  ai_model VARCHAR(50),
+  google_credentials JSONB,
+  updatedAt TIMESTAMP DEFAULT NOW()
+);
 ```
 
 ## 🧪 Testing
 
-### 🏆 100% API Coverage with Interactive External Integration
-
-We maintain **comprehensive test coverage with 4-tier architecture**:
+### Run Tests
 
 ```bash
-# === Core Test Suites ===
-npm run test:api:standard    # 24 core API tests (~1 min)
-npm run test:api:full        # 35 comprehensive tests + security (~5 min)
-npm run test:e2e:standard    # 4 essential E2E tests (~2 min)
-npm run test:e2e:full        # 25+ complete E2E tests (~5-10 min)
+# Run all tests
+npm run test:all
 
-# === Quick Commands ===
-npm run test:quick           # Critical tests only (~1 min)
-npm run test:all:standard    # Both standard suites (~3 min)
-npm run test:all:full        # All comprehensive tests (~15 min)
+# API Tests
+npm run test:api:standard    # Core API tests (21 tests)
+npm run test:api:full        # Comprehensive tests (70+ tests)
+
+# E2E Tests
+npm run test:e2e:standard    # Essential workflows (8 tests)
+npm run test:e2e:full        # Complete scenarios (25+ tests)
+
+# Quick smoke test
+npm run test:quick
+
+# Cleanup test data
+npm run test:cleanup
 ```
 
-### 🎯 Interactive External Integration Testing
+### Test Coverage Areas
 
-**NEW**: Secure, user-controlled testing of external services:
+- ✅ All API endpoints (100% coverage)
+- ✅ Authentication flows
+- ✅ Form CRUD operations
+- ✅ File upload handling
+- ✅ Google Sheets integration
+- ✅ AI form generation with GPT-5 handling
+- ✅ Error scenarios and edge cases
+- ✅ Performance and load testing
 
-- **Slack Webhook Testing** - Real notification testing with your webhook
-- **OpenAI API Testing** - AI integration validation with your API key
-- **Interactive Prompts** - Secure credential collection during test runs
-- **Optional Coverage** - 94.3% without credentials, 100% with your keys
+## 🚢 Deployment
 
-**Test Categories:**
-
-- ✅ **API Tests**: All 13 endpoints, security, performance, edge cases
-- ✅ **Unit Tests**: Component logic with Vitest
-- ✅ **E2E Tests**: Complete user flows with Playwright
-- ✅ **Integration Tests**: External services with real API calls
-- ✅ **Security Tests**: SQL injection, XSS, malicious input validation
-
-**Run complete test suite:** `npm run test:all:full`
-
-## 📚 Documentation
-
-### Core Documentation
-
-- [📋 Architecture Overview](./ARCHITECTURE.md) - System design and patterns
-- [🚀 Deployment Guide](./docs/DEPLOYMENT.md) - Complete deployment instructions
-- [🤝 Contributing Guide](./CONTRIBUTING.md) - Development workflow
-- [🔧 Claude Code Instructions](./.claude/instructions.md) - Development standards
-
-### Developer Resources
-
-- [🎨 Frontend Standards](./docs/standards/frontend.md)
-- [📝 Form Patterns](./docs/patterns/forms.md)
-- [🔄 Data Fetching](./docs/patterns/data-fetching.md)
-- [🎯 UI Guidelines](./docs/patterns/ui.md)
-- [🧪 Testing Guide](./docs/testing.md)
-- [⚡ Performance & A11y](./docs/perf-accessibility.md)
-
-## 🔧 Configuration Files
-
-- **TypeScript**: `tsconfig.json`
-- **ESLint**: `.eslintrc.json`
-- **Prettier**: `.prettierrc`
-- **Tailwind**: `tailwind.config.js`
-- **Testing**: `vitest.config.ts`, `playwright.config.ts`
-
-## 🚀 Deployment
-
-### Automated Setup (Recommended)
+### Docker Deployment
 
 ```bash
-# Interactive deployment setup
-npm run setup:deployment
-
-# Automated Docker deployment
+# Build and run with Docker
 npm run deploy:docker:auto
+
+# Or use Docker Compose
+docker-compose up -d
+
+# Check status
+npm run docker:status
+
+# View logs
+npm run docker:logs
 ```
 
-### Quick Deploy Options
+### Vercel Deployment
 
 ```bash
-# Vercel (recommended for small projects)
+# Deploy to Vercel
 npm run deploy:vercel
-
-# Docker (recommended for production)
-npm run deploy:docker:compose
-
-# Manual server deployment
-npm run build:production && npm start
 ```
 
-📖 **[Complete Deployment Guide](./docs/DEPLOYMENT.md)** - Detailed instructions for all deployment scenarios
+### Manual Deployment
+
+```bash
+# Build for production
+npm run build:production
+
+# Start production server
+npm start
+```
+
+## 📚 API Documentation
+
+### Authentication
+
+All admin endpoints require either:
+
+- Cookie-based authentication (via `/api/auth/login`)
+- API key header: `x-admin-key: your-api-key`
+
+### Core Endpoints
+
+#### Forms Management
+
+- `GET /api/forms` - List all forms or get specific form
+- `POST /api/forms` - Create or update form
+- `DELETE /api/forms` - Delete form
+
+#### Form Submission
+
+- `POST /api/submit` - Submit form data
+- `POST /api/submit/supabase` - Submit with Supabase integration
+
+#### AI Generation
+
+- `POST /api/ai/generate` - Generate form from prompt
+  - Supports GPT-4o, GPT-5-mini, GPT-5-nano models
+  - Intelligent error handling for token exhaustion
+
+#### Google Integration
+
+- `GET /api/auth/google` - Initiate OAuth flow
+- `GET /api/auth/google/callback` - OAuth callback
+- `POST /api/forms/validate-google-sheet` - Validate sheet URL
+- `POST /api/forms/export-responses` - Export to Google Sheets
+
+#### File Upload
+
+- `POST /api/upload` - Upload files to Cloudflare R2
+
+## 🔐 Security Features
+
+- **Authentication**: Secure cookie-based sessions with HTTP-only cookies
+- **Authorization**: Multi-layer API protection
+- **Input Validation**: Zod schemas for all inputs
+- **SQL Injection Protection**: Parameterized queries via Supabase
+- **XSS Protection**: Input sanitization and CSP headers
+- **File Upload Security**: Type validation, size limits, virus scanning
+- **Rate Limiting**: Request throttling for API endpoints
+- **CORS Configuration**: Strict origin validation
 
 ## 🤝 Contributing
 
-We welcome contributions! Please read our [Contributing Guide](./CONTRIBUTING.md) and check our [Architecture Decision Records](./DECISIONS/) to understand our technical choices.
-
-### Quick Contribution Checklist
-
-- [ ] Follow TypeScript-first development
-- [ ] Use React Hook Form + Zod for forms
-- [ ] Use TanStack Query for data fetching
-- [ ] Include tests for new features
-- [ ] Follow accessibility guidelines
-- [ ] Update documentation as needed
+Please see [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
 ## 📄 License
 
-MIT License - see [LICENSE](./LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## 🙏 Acknowledgments
 
-- [GitHub Issues](https://github.com/zierocode/FormDee/issues)
-- [Documentation](./docs/)
-- [Architecture Decisions](./DECISIONS/)
+- Built with [Next.js](https://nextjs.org/) and [TypeScript](https://www.typescriptlang.org/)
+- Database by [Supabase](https://supabase.com/)
+- File storage by [Cloudflare R2](https://www.cloudflare.com/products/r2/)
+- AI powered by [OpenAI](https://openai.com/)
+- UI components from [Ant Design](https://ant.design/)
 
 ---
 
-**Built with ❤️ using modern React patterns and best practices.**
+**FormDee v1.3.0** - Built with ❤️ for developers who need powerful, reliable form solutions.

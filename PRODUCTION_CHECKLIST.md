@@ -1,262 +1,217 @@
-# 🚀 FormDee v1.1 - Production Deployment Checklist
+# FormDee v1.3.0 - Production Deployment Checklist
 
-## ✅ Pre-Deployment Requirements
+## Pre-Deployment Checklist
 
-### 1. Google Apps Script Setup
+### 1. Environment Configuration ✅
 
-- [ ] Deploy the Apps Script code from `/apps-script/Code.gs` to Google Apps Script
-- [ ] Set the `ADMIN_API_KEY` in Script Properties (min 32 characters)
-- [ ] Deploy as Web App with:
-  - Execute as: **Me**
-  - Who has access: **Anyone**
-- [ ] Copy the deployment URL for `GAS_BASE_URL`
-- [ ] Test the deployment with: `curl YOUR_GAS_URL?op=health`
+- [ ] Copy `.env.production` and fill in all production values
+- [ ] Generate secure API keys (32+ characters) using `openssl rand -base64 32`
+- [ ] Configure Supabase production project URL and keys
+- [ ] Set up Cloudflare R2 production bucket
+- [ ] Update `NEXT_PUBLIC_BASE_URL` with production domain
+- [ ] Configure Google OAuth credentials (if using Google Sheets)
 
-### 2. Environment Configuration
+### 2. Security Verification ✅
 
-- [ ] Copy `.env.example` to `.env.production`
-- [ ] Generate secure keys (32+ characters):
+- [ ] All API keys are unique and secure (32+ characters)
+- [ ] Service role keys are only on server-side
+- [ ] HTTPS is enabled on production domain
+- [ ] CSP headers are properly configured
+- [ ] Rate limiting is enabled (default: 100 req/min)
+- [ ] CORS is configured for your domain only
 
-  ```bash
-  # Generate ADMIN_API_KEY
-  openssl rand -base64 32
+### 3. Database Setup ✅
 
-  # Generate ADMIN_UI_KEY
-  openssl rand -base64 32
-  ```
+- [ ] Supabase tables are created (`Forms`, `Responses`)
+- [ ] RLS policies are configured
+- [ ] Database indexes are optimized
+- [ ] Backup strategy is in place
+- [ ] Connection pooling is configured
 
-- [ ] Update environment variables:
-  - `GAS_BASE_URL`: Your Google Apps Script deployment URL
-  - `ADMIN_API_KEY`: Same key as in Script Properties
-  - `ADMIN_UI_KEY`: Your secure UI access key
-  - `NEXT_PUBLIC_BASE_URL`: Your production domain
+### 4. Build Verification ✅
 
-### 3. Google Sheets Setup
+```bash
+# Run production build
+npm run build:production
 
-- [ ] Create or identify your Master Google Sheet
-- [ ] Ensure the Apps Script has edit access to the sheet
-- [ ] The script will automatically create:
-  - `Forms` tab for form configurations
-  - `Settings` tab for AI configuration
+# Test production build locally
+npm start
+```
 
-### 4. AI Configuration (Optional)
+### 5. Testing ✅
 
-- [ ] Obtain API key from your AI provider (e.g., OpenAI)
-- [ ] Configure through Settings page after deployment
-- [ ] Test the API key before saving
+```bash
+# Run comprehensive test suite
+npm run test:all:full
 
-## 🏗️ Build & Deployment
+# Verify no test data in production
+npm run test:cleanup
+```
 
-### Option 1: Vercel Deployment (Recommended)
+### 6. Performance Optimization ✅
+
+- [ ] Bundle size optimized (check with `npm run build:analyze`)
+- [ ] Images are optimized (WebP/AVIF formats)
+- [ ] Static assets are cached (1 year TTL)
+- [ ] Database queries are optimized
+- [ ] API responses are cached where appropriate
+
+### 7. Monitoring Setup
+
+- [ ] Error tracking configured (e.g., Sentry)
+- [ ] Analytics configured (e.g., Google Analytics)
+- [ ] Uptime monitoring configured
+- [ ] Log aggregation setup
+- [ ] Alert notifications configured
+
+## Deployment Options
+
+### Option 1: Vercel (Recommended)
 
 ```bash
 # Install Vercel CLI
 npm i -g vercel
 
-# Deploy to production
+# Deploy to Vercel
 vercel --prod
 
-# Set environment variables in Vercel Dashboard
+# Set environment variables in Vercel dashboard
 # Project Settings → Environment Variables
 ```
 
-### Option 2: Docker Deployment
+### Option 2: Docker
 
 ```bash
-# Use the automated deployment script
+# Automated Docker deployment
 npm run deploy:docker:auto
 
-# Or manually:
+# Or manual Docker deployment
 docker build -t formdee:latest .
 docker run -d -p 3000:3000 --env-file .env.production formdee:latest
 ```
 
-### Option 3: Traditional Server Deployment
+### Option 3: Traditional Server
 
 ```bash
-# Build the production bundle
-npm run build:production
-
-# Start the production server
-npm start
-
-# Or use PM2 for process management
-npm install -g pm2
-pm2 start npm --name "formdee" -- start
-pm2 save
-pm2 startup
-```
-
-### Option 4: Platform-Specific Deployment
-
-#### Netlify
-
-```bash
-# Build command
+# Build the application
 npm run build
 
-# Publish directory
-.next
-
-# Environment variables: Set in Netlify Dashboard
-```
-
-#### Railway
-
-```bash
-# Connect GitHub repo
-# Set environment variables in Railway Dashboard
-# Deploy automatically on push
-```
-
-## 🔍 Post-Deployment Verification
-
-### 1. Health Checks
-
-- [ ] Application health: `https://yourdomain.com/api/health`
-- [ ] Google Apps Script: `curl YOUR_GAS_URL?op=health`
-- [ ] Authentication: Try logging in with your `ADMIN_UI_KEY`
-
-### 2. Functionality Tests
-
-- [ ] **Authentication**
-  - Login with admin key
-  - Verify session persistence
-  - Test logout functionality
-
-- [ ] **Form Builder**
-  - Create a test form
-  - Add various field types
-  - Configure Google Sheet for responses
-  - Save and verify in master sheet
-
-- [ ] **AI Features** (if configured)
-  - Navigate to Settings
-  - Configure AI model and API key
-  - Test configuration
-  - Try "Create by AI" feature
-
-- [ ] **Form Submission**
-  - Access public form via `/f/[refKey]`
-  - Submit test data
-  - Verify data in Google Sheet
-  - Check timestamp and metadata
-
-- [ ] **File Upload** (if using)
-  - Test file upload field
-  - Verify files in Google Drive
-  - Check file permissions
-
-## 🔒 Security Checklist
-
-- [ ] Environment variables are properly set (not exposed)
-- [ ] HTTPS is enabled (SSL certificate active)
-- [ ] Admin keys are strong (32+ characters)
-- [ ] Different keys for dev/staging/production
-- [ ] CORS settings are appropriate
-- [ ] Rate limiting is configured (if needed)
-- [ ] Error messages don't expose sensitive info
-- [ ] Logs don't contain sensitive data
-
-## 📊 Performance Optimization
-
-- [ ] Enable Next.js compression
-- [ ] Configure CDN (Cloudflare, Fastly, etc.)
-- [ ] Set appropriate cache headers
-- [ ] Enable image optimization
-- [ ] Monitor bundle size: `npm run build:analyze`
-
-## 🔄 Backup & Recovery
-
-- [ ] Document Google Sheet IDs
-- [ ] Backup form configurations
-- [ ] Export important response data
-- [ ] Document deployment process
-- [ ] Keep deployment scripts updated
-
-## 📈 Monitoring & Maintenance
-
-### Setup Monitoring
-
-- [ ] Application uptime monitoring (UptimeRobot, Pingdom)
-- [ ] Error tracking (Sentry, Rollbar)
-- [ ] Analytics (Google Analytics, Plausible)
-- [ ] Performance monitoring (Web Vitals)
-
-### Regular Maintenance
-
-- [ ] Weekly: Check error logs
-- [ ] Monthly: Review form submissions
-- [ ] Quarterly: Update dependencies
-- [ ] Annually: Rotate API keys
-
-## 🚨 Troubleshooting Guide
-
-### Common Issues & Solutions
-
-1. **"Failed to fetch forms"**
-   - Check `GAS_BASE_URL` is correct
-   - Verify `ADMIN_API_KEY` matches Script Properties
-   - Ensure Apps Script is deployed as Web App
-
-2. **"Authentication failed"**
-   - Verify `ADMIN_UI_KEY` is set correctly
-   - Check cookie settings for production domain
-   - Clear browser cookies and retry
-
-3. **"Cannot save to Google Sheet"**
-   - Verify Apps Script has edit permissions
-   - Check sheet URL format is correct
-   - Ensure sheet is not protected/locked
-
-4. **"AI generation not working"**
-   - Check Settings configuration
-   - Verify API key is valid
-   - Test with the Test Configuration button
-   - Check API provider status
-
-5. **"File upload fails"**
-   - Verify Google Drive permissions
-   - Check file size limits
-   - Ensure upload folder exists
-
-## 📝 Final Checklist
-
-- [ ] All environment variables configured
-- [ ] Production build successful
-- [ ] Health checks passing
-- [ ] Core features tested
-- [ ] Security measures in place
-- [ ] Monitoring configured
-- [ ] Documentation updated
-- [ ] Team trained on system
-
-## 🎉 Launch Ready!
-
-Once all items are checked, your FormDee v1.1 installation is production-ready!
-
-### Support Resources
-
-- GitHub Issues: Report bugs or request features
-- Documentation: `/CLAUDE.md` for detailed technical info
-- Deployment Guide: `/DEPLOYMENT_GUIDE.md` for platform-specific instructions
-
-### Quick Commands Reference
-
-```bash
-# Production build
-npm run build:production
-
 # Start production server
-npm start
-
-# Run tests
-npm test
-
-# Check deployment
-curl https://yourdomain.com/api/health
+NODE_ENV=production npm start
 ```
+
+### Option 4: Platform-as-a-Service
+
+- **Railway**: Connect GitHub repo, add env vars
+- **Render**: Connect GitHub repo, add env vars
+- **Fly.io**: Use `fly launch` and configure
+
+## Post-Deployment Verification
+
+### 1. Functionality Tests
+
+- [ ] Create a test form through UI
+- [ ] Submit a test response
+- [ ] Verify data in Supabase
+- [ ] Test file upload functionality
+- [ ] Test Slack integration (if configured)
+- [ ] Test Google Sheets integration (if configured)
+- [ ] Test AI form generation
+
+### 2. Security Tests
+
+- [ ] Verify HTTPS is working
+- [ ] Check security headers (use securityheaders.com)
+- [ ] Test rate limiting
+- [ ] Verify admin authentication
+- [ ] Test CORS configuration
+
+### 3. Performance Tests
+
+- [ ] Page load time < 3 seconds
+- [ ] API response time < 500ms
+- [ ] Test under load (use tools like k6 or Apache Bench)
+- [ ] Verify caching is working
+
+### 4. Monitoring Verification
+
+- [ ] Error tracking is capturing errors
+- [ ] Analytics is tracking page views
+- [ ] Logs are being collected
+- [ ] Alerts are configured and working
+
+## Production Environment Variables
+
+```env
+# Required Variables
+NODE_ENV=production
+NEXT_PUBLIC_BASE_URL=https://your-domain.com
+ADMIN_API_KEY=[32+ char secure key]
+ADMIN_UI_KEY=[32+ char secure key]
+SUPABASE_URL=https://[project].supabase.co
+SUPABASE_ANON_KEY=[your-anon-key]
+SUPABASE_SERVICE_ROLE_KEY=[your-service-key]
+R2_ACCOUNT_ID=[cloudflare-account-id]
+R2_ACCESS_KEY_ID=[r2-access-key]
+R2_SECRET_ACCESS_KEY=[r2-secret-key]
+R2_BUCKET_NAME=[bucket-name]
+R2_PUBLIC_URL=https://[r2-domain].com
+NEXT_PUBLIC_R2_PUBLIC_URL=https://[r2-domain].com
+
+# Optional Variables
+RATE_LIMIT_PER_MINUTE=100
+MAX_FILE_SIZE_MB=10
+GENERATE_SOURCEMAP=false
+```
+
+## Rollback Plan
+
+If issues occur after deployment:
+
+1. **Immediate Rollback**
+   - Revert to previous deployment version
+   - Restore database from backup if needed
+
+2. **Debug Production Issues**
+
+   ```bash
+   # Check production logs
+   npm run docker:logs  # If using Docker
+   vercel logs         # If using Vercel
+   ```
+
+3. **Emergency Contacts**
+   - Technical Lead: [contact]
+   - DevOps Team: [contact]
+   - Database Admin: [contact]
+
+## Security Reminders
+
+⚠️ **NEVER**:
+
+- Commit `.env` files with real values
+- Share API keys in plain text
+- Use development keys in production
+- Disable HTTPS in production
+- Skip security headers
+
+✅ **ALWAYS**:
+
+- Rotate API keys regularly
+- Monitor for suspicious activity
+- Keep dependencies updated
+- Backup data regularly
+- Test disaster recovery plan
+
+## Support
+
+For deployment issues:
+
+- Check logs for errors
+- Review this checklist
+- Contact support team
+- File issue at: https://github.com/your-repo/issues
 
 ---
 
-_Last Updated: FormDee v1.2.0 - AI-Powered Form Builder_
+**Last Updated**: v1.3.0 - Enhanced with GPT-5 support, Google Sheets integration, and comprehensive security features

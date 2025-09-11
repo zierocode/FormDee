@@ -115,6 +115,7 @@ export function FieldList({
                 )}
               </Draggable>
             ))}
+
             {provided.placeholder}
           </ul>
         )}

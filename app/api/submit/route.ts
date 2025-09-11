@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ERROR_MESSAGES, HTTP_STATUS } from '@/lib/constants'
+import { logger } from '@/lib/logger'
 import { supabase } from '@/lib/supabase'
 
 function errorResponse(message: string, code: number = HTTP_STATUS.BAD_REQUEST) {
@@ -52,7 +53,60 @@ async function sendSlackNotification(
 
     return true
   } catch (error) {
-    console.error('Slack notification error:', error)
+    logger.error('Slack notification error:', error)
+    return false
+  }
+}
+
+/**
+ * Send form submission to Google Sheets using user authentication
+ */
+async function sendToGoogleSheets(
+  sheetUrl: string,
+  formTitle: string, // No longer used but kept for compatibility
+  formFields: any[],
+  submissionData: any,
+  refKey: string,
+  userAuth?: { accessToken: string; refreshToken?: string }
+) {
+  try {
+    if (!userAuth || !userAuth.accessToken) {
+      logger.error('[Google Sheets] No user authentication provided for Google Sheets integration')
+      return false
+    }
+
+    // Import the user-authenticated Google Sheets service
+    const { appendToGoogleSheetsWithUser } = await import('@/lib/google-sheets-user')
+
+    // Prepare data for Google Sheets
+    const headers = ['Timestamp', ...formFields.map((field) => field.label || field.key)]
+    const values = [
+      new Date().toISOString(),
+      ...formFields.map((field) => {
+        const value = submissionData[field.key] || ''
+        return typeof value === 'object' ? JSON.stringify(value) : String(value)
+      }),
+    ]
+
+    logger.info(`[Google Sheets] Sending data to Google Sheets with user auth:`, {
+      formTitle,
+      refKey,
+      headers,
+      values,
+    })
+
+    // Send to Google Sheets using user authentication (with fixed sheet name)
+    const result = await appendToGoogleSheetsWithUser(sheetUrl, headers, values, userAuth)
+
+    if (result.success) {
+      logger.info(`[Google Sheets] Successfully appended ${result.rowsAppended || 1} row(s)`)
+      return true
+    } else {
+      logger.error(`[Google Sheets] Failed to append data: ${result.error}`)
+      return false
+    }
+  } catch (error) {
+    logger.error('Google Sheets integration error:', error)
     return false
   }
 }
@@ -78,7 +132,7 @@ async function handlePost(req: NextRequest) {
       .single()
 
     if (formError || !form) {
-      console.error('Form lookup error:', formError)
+      logger.error('Form lookup error:', formError)
       return errorResponse(`Form not found: ${body.refKey}`, HTTP_STATUS.NOT_FOUND)
     }
 
@@ -88,7 +142,7 @@ async function handlePost(req: NextRequest) {
       try {
         formFields = JSON.parse(formFields)
       } catch (e) {
-        console.error('Failed to parse form fields:', e)
+        logger.error('Failed to parse form fields:', e)
         formFields = []
       }
     }
@@ -115,6 +169,8 @@ async function handlePost(req: NextRequest) {
       files: fileUrls,
       slackNotificationSent: false,
       slackNotificationError: null as string | null,
+      googleSheetsSent: false,
+      googleSheetsError: null as string | null,
       submittedAt: new Date().toISOString(),
       metadata: {
         formTitle: form.title,
@@ -123,8 +179,8 @@ async function handlePost(req: NextRequest) {
       },
     }
 
-    // Send Slack notification if configured
-    if (form.slackWebhookUrl) {
+    // Send Slack notification if configured and enabled
+    if (form.slackWebhookUrl && form.slackEnabled) {
       const slackSent = await sendSlackNotification(
         form.slackWebhookUrl,
         form.title,
@@ -137,6 +193,46 @@ async function handlePost(req: NextRequest) {
       }
     }
 
+    // Send to Google Sheets if configured and enabled
+    if (form.googleSheetUrl && form.googleSheetEnabled) {
+      // Get Google auth from database only (no cookies)
+      const { getGoogleAuthFromDatabase, getMostRecentGoogleAuth } = await import(
+        '@/lib/google-auth'
+      )
+
+      // Try to get auth associated with this form
+      let googleAuth = await getGoogleAuthFromDatabase(body.refKey)
+
+      // If no auth associated with form, try to get the most recent auth
+      if (!googleAuth) {
+        googleAuth = await getMostRecentGoogleAuth()
+      }
+
+      if (googleAuth && googleAuth.accessToken) {
+        const sheetsSent = await sendToGoogleSheets(
+          form.googleSheetUrl,
+          form.title,
+          formFields,
+          body.values,
+          body.refKey,
+          {
+            accessToken: googleAuth.accessToken,
+            refreshToken: googleAuth.refreshToken,
+          }
+        )
+        responseData.googleSheetsSent = sheetsSent
+        if (!sheetsSent) {
+          responseData.googleSheetsError = 'Failed to send to Google Sheets'
+        }
+      } else {
+        logger.warn(
+          '[Google Sheets] No user authentication available for Google Sheets integration'
+        )
+        responseData.googleSheetsSent = false
+        responseData.googleSheetsError = 'Google Sheets integration requires user authentication'
+      }
+    }
+
     // Save to Supabase Responses table
     const { data: savedResponse, error: saveError } = await supabase
       .from('Responses')
@@ -145,7 +241,7 @@ async function handlePost(req: NextRequest) {
       .single()
 
     if (saveError) {
-      console.error('Error saving response:', saveError)
+      logger.error('Error saving response:', saveError)
       return errorResponse('Failed to save form submission', HTTP_STATUS.INTERNAL_SERVER_ERROR)
     }
 
@@ -161,7 +257,7 @@ async function handlePost(req: NextRequest) {
       },
     })
   } catch (error: any) {
-    console.error('[API] Submit error:', error)
+    logger.error('[API] Submit error:', error)
     return errorResponse(
       error?.message || ERROR_MESSAGES.SUBMISSION_FAILED,
       HTTP_STATUS.INTERNAL_SERVER_ERROR

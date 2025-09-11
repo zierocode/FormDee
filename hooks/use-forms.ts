@@ -22,8 +22,9 @@ export function useForms() {
 }
 
 // Hook to create or update a form (admin only)
-export function useUpsertForm() {
+export function useUpsertForm(options?: { showNotifications?: boolean }) {
   const queryClient = useQueryClient()
+  const showNotifications = options?.showNotifications ?? true
 
   return useMutation({
     mutationFn: (form: FormConfig) => formsApi.upsertForm(form),
@@ -32,14 +33,17 @@ export function useUpsertForm() {
       queryClient.invalidateQueries({ queryKey: queryKeys.formsList })
       // Update the specific form cache
       queryClient.setQueryData(queryKeys.form(data.refKey), data)
-      // Show success message
-      notification.success({
-        message: 'Form Saved',
-        description: 'Form saved successfully',
-        placement: 'bottomRight',
-      })
+      // Show success message only if enabled
+      if (showNotifications) {
+        notification.success({
+          message: 'Form Saved',
+          description: 'Form saved successfully',
+          placement: 'bottomRight',
+        })
+      }
     },
     onError: (error: Error) => {
+      // Always show error notifications for safety
       notification.error({
         message: 'Save Failed',
         description: `Failed to save form: ${error.message}`,

@@ -1,5 +1,5 @@
 'use client'
-import { memo, useEffect, useRef } from 'react'
+import { memo, useEffect } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Form from 'antd/es/form'
 import Input from 'antd/es/input'
@@ -15,6 +15,8 @@ type Props = {
   value?: FormField
   onSave: (_field: FormField) => void
   onCancel?: () => void
+  existingFields?: FormField[]
+  editingIndex?: number
 }
 
 const FIELD_TYPES: { value: FieldType; label: string }[] = [
@@ -31,8 +33,10 @@ const FIELD_TYPES: { value: FieldType; label: string }[] = [
 
 export const FieldEditor = memo(function FieldEditor({
   value,
-  onSave,
+  onSave: _onSave,
   onCancel: _onCancel,
+  existingFields: _existingFields = [],
+  editingIndex: _editingIndex,
 }: Props) {
   const form = useForm<FieldEditorData>({
     resolver: zodResolver(fieldEditorSchema),
@@ -59,13 +63,12 @@ export const FieldEditor = memo(function FieldEditor({
 
   const {
     control,
-    handleSubmit,
-    formState: { errors, isValid },
+    handleSubmit: _handleSubmit,
+    formState: { errors, isValid: _isValid },
     reset: _reset,
     watch,
   } = form
   const watchedType = useWatch({ control, name: 'type' })
-  const saveTimeoutRef = useRef<NodeJS.Timeout>()
 
   const needsOptions = ['select', 'radio', 'checkbox'].includes(watchedType)
   const isNumberField = watchedType === 'number'
@@ -96,74 +99,6 @@ export const FieldEditor = memo(function FieldEditor({
     })
     return () => subscription.unsubscribe()
   }, [watch, form, needsOptions, isNumberField, isTextField, isFileField])
-
-  // Auto-save on valid changes with debouncing
-  const lastValidDataRef = useRef<string>('')
-
-  useEffect(() => {
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current)
-    }
-
-    if (!isValid) return
-
-    saveTimeoutRef.current = setTimeout(() => {
-      handleSubmit((data) => {
-        const currentDataString = JSON.stringify(data)
-        if (currentDataString !== lastValidDataRef.current) {
-          const fieldToSave: FormField = {
-            key: data.key.trim(),
-            label: data.label.trim(),
-            type: data.type,
-            required: data.required ?? false,
-            placeholder: data.placeholder || undefined,
-            helpText: data.helpText || undefined,
-            options: needsOptions
-              ? Array.isArray(data.options)
-                ? data.options
-                : data.options
-                    ?.split('\n')
-                    .map((s) => s.trim())
-                    .filter(Boolean)
-              : undefined,
-            min:
-              typeof data.min === 'string' ? (data.min ? Number(data.min) : undefined) : data.min,
-            max:
-              typeof data.max === 'string' ? (data.max ? Number(data.max) : undefined) : data.max,
-            pattern: data.type === 'text' ? data.pattern || undefined : undefined,
-            acceptedTypes:
-              data.type === 'file'
-                ? Array.isArray(data.acceptedTypes)
-                  ? data.acceptedTypes
-                  : data.acceptedTypes
-                      ?.split(',')
-                      .map((s) => s.trim())
-                      .filter(Boolean)
-                      .map((s) => (s.startsWith('.') ? s : `.${s}`))
-                : undefined,
-            maxFileSize:
-              data.type === 'file'
-                ? typeof data.maxFileSize === 'string'
-                  ? data.maxFileSize
-                    ? Number(data.maxFileSize) * 1024 * 1024
-                    : undefined
-                  : data.maxFileSize
-                : undefined,
-            allowMultiple: data.type === 'file' ? data.allowMultiple : undefined,
-          }
-
-          onSave(fieldToSave)
-          lastValidDataRef.current = currentDataString
-        }
-      })()
-    }, 200)
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current)
-      }
-    }
-  }, [watch, isValid, handleSubmit, onSave, needsOptions])
 
   return (
     <div style={{ padding: '16px' }}>

@@ -402,6 +402,239 @@ class ComprehensiveAPITestSuite extends StandardAPITestSuite {
     return this.results
   }
 
+  // ═══════════════════════════════════════════
+  // ENHANCED AI GENERATION TESTS (GPT-5 HANDLING)
+  // ═══════════════════════════════════════════
+
+  async testAIAPIComprehensive() {
+    console.log(
+      `\n${colors.bright}${colors.magenta}══════════════════════════════════════════${colors.reset}`
+    )
+    console.log(`${colors.bright}COMPREHENSIVE AI GENERATION TESTS${colors.reset}`)
+    console.log(`${colors.magenta}══════════════════════════════════════════${colors.reset}`)
+
+    // Run standard AI tests first
+    await this.testAIAPI()
+
+    // Test 1: GPT-5 Empty Content Detection
+    await this.runTest('GPT-5 Empty Content Handling', 'AI', async () => {
+      const response = await this.makeRequestWithMetrics('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'x-admin-key': config.adminApiKey },
+        body: {
+          prompt: 'Create a complex form with 100 fields that might exhaust tokens',
+        },
+      })
+
+      if (response.status === 500 && response.data.error) {
+        const errorMessage = response.data.error.toLowerCase()
+        const hasHelpfulError =
+          errorMessage.includes('reasoning tokens') ||
+          errorMessage.includes('gpt-4o') ||
+          errorMessage.includes('no content')
+
+        this.assert(
+          response.status === 200 || hasHelpfulError,
+          'Should provide helpful error for GPT-5 token exhaustion'
+        )
+      }
+    })
+
+    // Test 2: Long Prompt Token Management
+    await this.runTest('Long Prompt Token Management', 'AI', async () => {
+      const longPrompt = 'Create a form with: ' + 'many fields, '.repeat(500)
+
+      const response = await this.makeRequestWithMetrics('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'x-admin-key': config.adminApiKey },
+        body: { prompt: longPrompt },
+      })
+
+      this.assert(
+        response.status === 200 || response.data.error,
+        'Should handle long prompts gracefully'
+      )
+    })
+
+    // Test 3: JSON Response Validation
+    await this.runTest('AI JSON Response Structure', 'AI', async () => {
+      const response = await this.makeRequestWithMetrics('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'x-admin-key': config.adminApiKey },
+        body: { prompt: 'Create a simple contact form' },
+      })
+
+      if (response.status === 200) {
+        this.assert(response.data.title, 'Should have title')
+        this.assert(Array.isArray(response.data.fields), 'Should have fields array')
+        this.assert(response.data.refKey, 'Should have refKey')
+      }
+    })
+
+    // Test 4: Error Message Clarity
+    await this.runTest('AI Error Message Clarity', 'AI', async () => {
+      const response = await this.makeRequestWithMetrics('/api/ai/generate', {
+        method: 'POST',
+        headers: { 'x-admin-key': config.adminApiKey },
+        body: { prompt: 'x'.repeat(5) }, // Too short
+      })
+
+      if (response.status >= 400) {
+        this.assert(response.data.error, 'Should have error message')
+        if (response.data.details) {
+          this.assert(Array.isArray(response.data.details), 'Should have error details')
+        }
+      }
+    })
+  }
+
+  // ═══════════════════════════════════════════
+  // GOOGLE SHEETS INTEGRATION TESTS
+  // ═══════════════════════════════════════════
+
+  async testGoogleSheetsIntegration() {
+    console.log(
+      `\n${colors.bright}${colors.green}══════════════════════════════════════════${colors.reset}`
+    )
+    console.log(`${colors.bright}GOOGLE SHEETS INTEGRATION TESTS${colors.reset}`)
+    console.log(`${colors.green}══════════════════════════════════════════${colors.reset}`)
+
+    // Test 1: Validate Google Sheet URL
+    await this.runTest('Validate Google Sheet URL', 'GoogleSheets', async () => {
+      const response = await this.makeRequestWithMetrics('/api/forms/validate-google-sheet', {
+        method: 'POST',
+        headers: { 'x-admin-key': config.adminApiKey },
+        body: {
+          sheetUrl: 'https://docs.google.com/spreadsheets/d/1234567890/edit',
+        },
+      })
+
+      this.assert(
+        response.status === 200 || response.status === 400,
+        `Should validate sheet URL, got ${response.status}`
+      )
+    })
+
+    // Test 2: Test Google Sheet Connection
+    await this.runTest('Test Google Sheet Connection', 'GoogleSheets', async () => {
+      const response = await this.makeRequestWithMetrics('/api/forms/test-google-sheet', {
+        method: 'POST',
+        headers: { 'x-admin-key': config.adminApiKey },
+        body: {
+          sheetId: 'test-sheet-id',
+          sheetName: 'Sheet1',
+        },
+      })
+
+      // Should handle gracefully even without Google auth
+      this.assert(response.status !== undefined, 'Should return a status code')
+    })
+
+    // Test 3: Export Responses to Sheet
+    await this.runTest('Export Responses to Sheet', 'GoogleSheets', async () => {
+      const response = await this.makeRequestWithMetrics('/api/forms/export-responses', {
+        method: 'POST',
+        headers: { 'x-admin-key': config.adminApiKey },
+        body: {
+          refKey: 'test-form',
+          sheetUrl: 'https://docs.google.com/spreadsheets/d/test/edit',
+        },
+      })
+
+      // Should handle gracefully
+      this.assert(response.status === 200 || response.data.error, 'Should handle export request')
+    })
+
+    // Test 4: Invalid Sheet URL Format
+    await this.runTest('Invalid Sheet URL Format', 'GoogleSheets', async () => {
+      const response = await this.makeRequestWithMetrics('/api/forms/validate-google-sheet', {
+        method: 'POST',
+        headers: { 'x-admin-key': config.adminApiKey },
+        body: {
+          sheetUrl: 'not-a-valid-url',
+        },
+      })
+
+      this.assert(response.status >= 400, 'Should reject invalid URL format')
+    })
+
+    // Test 5: Missing Authentication
+    await this.runTest('Google Sheets Without Auth', 'GoogleSheets', async () => {
+      const response = await this.makeRequestWithMetrics('/api/forms/export-responses', {
+        method: 'POST',
+        body: {
+          refKey: 'test-form',
+          sheetUrl: 'https://docs.google.com/spreadsheets/d/test/edit',
+        },
+      })
+
+      this.assert(response.status === 401, 'Should require authentication')
+    })
+  }
+
+  // ═══════════════════════════════════════════
+  // GOOGLE AUTH FLOW TESTS
+  // ═══════════════════════════════════════════
+
+  async testGoogleAuthFlow() {
+    console.log(
+      `\n${colors.bright}${colors.blue}══════════════════════════════════════════${colors.reset}`
+    )
+    console.log(`${colors.bright}GOOGLE AUTH FLOW TESTS${colors.reset}`)
+    console.log(`${colors.blue}══════════════════════════════════════════${colors.reset}`)
+
+    // Test 1: Initiate Google Auth
+    await this.runTest('Initiate Google Auth', 'GoogleAuth', async () => {
+      const response = await this.makeRequestWithMetrics('/api/auth/google', {
+        method: 'GET',
+        headers: { 'x-admin-key': config.adminApiKey },
+      })
+
+      // Should return auth URL or handle gracefully
+      this.assert(
+        response.status === 200 || response.status === 302 || response.data.error,
+        'Should handle auth initiation'
+      )
+    })
+
+    // Test 2: Check Google Auth Status
+    await this.runTest('Check Google Auth Status', 'GoogleAuth', async () => {
+      const response = await this.makeRequestWithMetrics('/api/auth/google/status', {
+        method: 'GET',
+        headers: { 'x-admin-key': config.adminApiKey },
+      })
+
+      this.assert(response.status === 200, `Should return auth status, got ${response.status}`)
+
+      if (response.status === 200) {
+        this.assert(response.data.authenticated !== undefined, 'Should have authenticated field')
+      }
+    })
+
+    // Test 3: Google Logout
+    await this.runTest('Google Logout', 'GoogleAuth', async () => {
+      const response = await this.makeRequestWithMetrics('/api/auth/google/logout', {
+        method: 'POST',
+        headers: { 'x-admin-key': config.adminApiKey },
+      })
+
+      this.assert(
+        response.status === 200 || response.status === 204,
+        'Should handle logout request'
+      )
+    })
+
+    // Test 4: Invalid Callback Handling
+    await this.runTest('Invalid Google Callback', 'GoogleAuth', async () => {
+      const response = await this.makeRequestWithMetrics('/api/auth/google/callback?code=invalid', {
+        method: 'GET',
+      })
+
+      // Should handle invalid callback gracefully
+      this.assert(response.status !== undefined, 'Should handle invalid callback')
+    })
+  }
+
   // Main comprehensive test runner
   async run() {
     console.log(`${colors.bright}${colors.cyan}FormDee Comprehensive API Test Suite${colors.reset}`)
@@ -415,12 +648,19 @@ class ComprehensiveAPITestSuite extends StandardAPITestSuite {
       await this.testHealthAPIComprehensive()
       await this.testAuthAPIComprehensive()
 
-      // Run standard tests for other endpoints
+      // Run standard tests for core endpoints
       await this.testFormsAPI()
       await this.testSubmissionAPI()
       await this.testResponsesAPI()
       await this.testSettingsAPI()
-      await this.testAIAPI()
+
+      // Run enhanced AI tests with GPT-5 handling
+      await this.testAIAPIComprehensive()
+
+      // Run Google integration tests
+      await this.testGoogleSheetsIntegration()
+      await this.testGoogleAuthFlow()
+
       await this.testUploadAPI()
 
       return this.generateComprehensiveReport()

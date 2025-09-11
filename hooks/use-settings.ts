@@ -18,6 +18,7 @@ export function useSettings(adminKey?: string) {
           headers: {
             'x-admin-key': adminKey,
           },
+          credentials: 'include', // Include cookies for authentication
         })
         const data = await response.json()
 
@@ -31,9 +32,10 @@ export function useSettings(adminKey?: string) {
       // Otherwise use the default API call
       return settingsApi.getSettings()
     },
-    enabled: !!adminKey || true, // Always enabled, but adminKey helps with auth
+    enabled: !!adminKey, // Only fetch when adminKey is available
     staleTime: 30000, // Consider data fresh for 30 seconds
     gcTime: 60000, // Keep in cache for 1 minute
+    retry: 1, // Only retry once on failure
   })
 }
 
@@ -55,6 +57,7 @@ export function useUpdateSettings(
             'Content-Type': 'application/json',
             'x-admin-key': adminKey,
           },
+          credentials: 'include', // Include cookies for authentication
           body: JSON.stringify(settings),
         })
 
@@ -97,6 +100,7 @@ export function useTestSettings(
             'Content-Type': 'application/json',
             'x-admin-key': adminKey,
           },
+          credentials: 'include', // Include cookies for authentication
           body: JSON.stringify({
             aiModel: settings.aiModel,
             aiApiKey: settings.apiKey,

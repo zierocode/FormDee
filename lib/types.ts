@@ -33,6 +33,9 @@ export type FormConfig = {
   title: string
   description?: string
   slackWebhookUrl?: string
+  slackEnabled?: boolean
+  googleSheetUrl?: string
+  googleSheetEnabled?: boolean
   fields: FormField[]
   createdAt?: string
   updatedAt?: string

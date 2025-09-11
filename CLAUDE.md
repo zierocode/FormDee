@@ -1,8 +1,8 @@
-# FormDee - Dynamic Form Builder v1.2
+# FormDee - Dynamic Form Builder v1.3.0
 
 ## 🚀 Production Status - Complete & Deployed
 
-This project is **production-ready** and **feature-complete** with AI-powered form generation, comprehensive testing and deployment tools. All major features implemented:
+This project is **production-ready** and **feature-complete** with enhanced AI-powered form generation, Google Sheets integration, comprehensive testing and deployment tools. All major features implemented:
 
 ### ✅ Core Features Complete (v1.1)
 
@@ -19,9 +19,20 @@ This project is **production-ready** and **feature-complete** with AI-powered fo
 - ✅ **International Support** - Unicode handling and multi-language forms
 - ✅ **Data Migration Tools** - Smart handling of form structure changes
 
-### ✅ Recent Improvements (v1.2.1)
+### ✅ Recent Improvements (v1.3.0)
 
-- ✅ **Enhanced Form Builder** - Added delete functionality with comprehensive warnings in edit mode  
+- ✅ **Enhanced GPT-5 Model Support** - Intelligent handling of reasoning token exhaustion with helpful error messages
+- ✅ **Google Sheets Integration** - Complete OAuth flow, validation, and export functionality
+- ✅ **Comprehensive Test Coverage** - 70+ API tests including AI and Google Sheets integration
+- ✅ **Complete API Documentation** - Full REST API documentation with examples
+- ✅ **Improved Error Handling** - Clear, actionable error messages for better debugging
+- ✅ **Production Security Enhancements** - CSP headers, rate limiting middleware, secure authentication
+- ✅ **Production Optimizations** - Enhanced Next.js config, environment templates, deployment checklist
+- ✅ **Production Logging** - Structured logging utility with different levels and contexts
+
+### ✅ Previous Improvements (v1.2.1)
+
+- ✅ **Enhanced Form Builder** - Added delete functionality with comprehensive warnings in edit mode
 - ✅ **Consistent Notifications** - All messages now use bottom-right notification placement for better UX
 - ✅ **Improved Error Pages** - 404 and form not found pages now use consistent, beautiful design
 - ✅ **Enhanced Authentication Flow** - Better error messaging for unauthorized access attempts
@@ -134,7 +145,7 @@ SUPABASE_URL=your-supabase-url
 SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
 
-# Cloudflare R2 Configuration  
+# Cloudflare R2 Configuration
 R2_ACCOUNT_ID=your-account-id
 R2_ACCESS_KEY_ID=your-access-key-id
 R2_SECRET_ACCESS_KEY=your-secret-access-key
@@ -204,8 +215,9 @@ Stores all form submissions:
 | `/api/settings/test`    | ✅ 100%      | **Interactive** OpenAI API validation       |
 
 ### ⚡ **Recent Updates (v1.2.1)**
+
 - ✅ **Smart E2E Head Mode**: Intelligent environment detection for optimal testing
-- ✅ **Enhanced Playwright Report Management**: Robust report generation and viewing  
+- ✅ **Enhanced Playwright Report Management**: Robust report generation and viewing
 - ✅ **TypeScript Compliance**: 100% type safety with zero compilation errors
 - ✅ **Production Build Optimization**: Complete build pipeline with quality checks
 - ✅ **Fixed API Key Persistence**: Tests no longer save invalid keys to production
@@ -317,12 +329,15 @@ npm run test:safety-check    # Verify cleanup configuration
 FormDee features **intelligent environment detection** that automatically chooses the best visual testing approach:
 
 #### **🤖 Automatic Detection**
+
 The system automatically detects your environment and chooses:
+
 - **🎭 Playwright MCP** - When running in Claude Code for optimal integration
-- **🌐 Native Playwright** - When running in regular environments  
+- **🌐 Native Playwright** - When running in regular environments
 - **🕶️ Headless Mode** - When no display is available
 
 #### **🚀 Simplified Commands**
+
 ```bash
 # Smart head mode - automatically detects best approach
 npm run test:e2e:head
@@ -335,6 +350,7 @@ npm run test:e2e:head:verbose
 ```
 
 #### **🔍 How Auto-Detection Works**
+
 1. **Environment Scan**: Detects Claude Code vs regular environment
 2. **MCP Availability**: Checks for Playwright MCP tools
 3. **Display Check**: Verifies GUI/display capability
@@ -342,11 +358,12 @@ npm run test:e2e:head:verbose
 5. **Smart Selection**: Automatically chooses optimal method
 
 #### **📊 Detection Results**
+
 ```bash
 # Example output:
 🔍 Detecting environment capabilities...
    ✅ Claude Code environment detected
-   ✅ MCP capabilities available  
+   ✅ MCP capabilities available
    🎯 Recommendation: Use MCP for optimal experience
 
 # OR:
@@ -358,6 +375,7 @@ npm run test:e2e:head:verbose
 ```
 
 #### **🎯 Smart Features**
+
 - ✅ **Zero Configuration**: Works out-of-the-box in any environment
 - ✅ **Optimal Experience**: Always chooses the best available method
 - ✅ **Graceful Fallback**: Falls back to headless if no display
@@ -366,6 +384,7 @@ npm run test:e2e:head:verbose
 - ✅ **Error Recovery**: Clear troubleshooting when issues occur
 
 #### **🛠️ Manual Override (Advanced)**
+
 ```bash
 # Force native Playwright (bypass auto-detection)
 npm run test:e2e:manual:standard
@@ -382,8 +401,9 @@ npm run test:head-mode
 ```
 
 #### **💡 Benefits of Smart Detection**
+
 - **For Claude Code Users**: Seamlessly uses MCP for integrated debugging
-- **For Regular Users**: Falls back to native Playwright automatically  
+- **For Regular Users**: Falls back to native Playwright automatically
 - **For CI/CD**: Automatically detects headless environments
 - **For Developers**: No need to remember different commands for different environments
 
@@ -475,9 +495,10 @@ npm run test:e2e:head
 ```
 
 **Detection Logic:**
+
 - ✅ **Claude Code Environment**: Uses MCP Playwright tools for step-by-step visual testing
 - ✅ **Native Environment**: Falls back to standard Playwright with head mode
-- ✅ **Headless Environment**: Automatically switches to headless mode  
+- ✅ **Headless Environment**: Automatically switches to headless mode
 - ✅ **Error Handling**: Provides clear guidance for missing dependencies
 
 ### Enhanced Report Management
@@ -490,6 +511,7 @@ npm run test:e2e:report:info   # Show detailed report status
 ```
 
 **Features:**
+
 - 🔍 **Smart Port Detection**: Automatically finds available ports
 - 📊 **Report Validation**: Checks report existence and freshness
 - 🖥️ **Cross-Platform**: Works on macOS, Linux, and Windows

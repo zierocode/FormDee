@@ -118,8 +118,8 @@ export async function POST(request: NextRequest) {
       },
     }
 
-    // Send Slack notification if configured
-    if (form.slackWebhookUrl) {
+    // Send Slack notification if configured and enabled
+    if (form.slackWebhookUrl && form.slackEnabled) {
       const slackSent = await sendSlackNotification(
         form.slackWebhookUrl,
         form.title,

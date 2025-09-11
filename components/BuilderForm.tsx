@@ -7,8 +7,9 @@ import {
   CopyOutlined,
   ExportOutlined,
   CloseOutlined,
-  QuestionCircleOutlined,
   DeleteOutlined,
+  LinkOutlined,
+  SyncOutlined,
 } from '@ant-design/icons'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Button from 'antd/es/button'
@@ -57,9 +58,23 @@ export function BuilderForm({
   })
   const [fields, setFields] = useState<FormField[]>(initial?.fields ?? [])
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
-  const [slackEnabled, setSlackEnabled] = useState(!!initial?.slackWebhookUrl)
+  const [slackEnabled, setSlackEnabled] = useState(initial?.slackEnabled ?? false)
+  const [googleSheetEnabled, setGoogleSheetEnabled] = useState(!!initial?.googleSheetEnabled)
+  const [googleAuthStatus, setGoogleAuthStatus] = useState<{
+    authenticated: boolean
+    user: any
+    loading: boolean
+  }>({ authenticated: false, user: null, loading: true })
   const [copySuccess, setCopySuccess] = useState(false)
   const [loadingInitial, setLoadingInitial] = useState(mode === 'edit')
+  const [hasInitialized, setHasInitialized] = useState(false)
+  const [initialFieldsSnapshot, setInitialFieldsSnapshot] = useState<string>('')
+  const [initialGoogleSheetUrl, setInitialGoogleSheetUrl] = useState<string>('')
+  const [syncingResponses, setSyncingResponses] = useState(false)
+  const [testingGoogleSheet, setTestingGoogleSheet] = useState(false)
+  const [testingSlack, setTestingSlack] = useState(false)
+  const [, setGoogleSheetValidated] = useState(false)
+  const [googleSheetValidationError, setGoogleSheetValidationError] = useState<string>('')
   const [saveButtonPortalContainer, setSaveButtonPortalContainer] = useState<HTMLElement | null>(
     null
   )
@@ -67,7 +82,10 @@ export function BuilderForm({
   // TanStack Query hooks
   const { data: formsData } = useForms()
   const { data: responseStats } = useResponseStats(refKeyHint || initial?.refKey || '')
-  const upsertFormMutation = useUpsertForm()
+  const upsertFormMutation = useUpsertForm({ showNotifications: false })
+
+  // Track if we're currently saving to prevent state reset during save
+  const [isSaving, setIsSaving] = useState(false)
 
   // React Hook Form setup
   const form = useForm<FormConfigData>({
@@ -103,111 +121,221 @@ export function BuilderForm({
     }
   }, [saveButtonContainer])
 
-  // Header buttons component (Save and Discard)
-  const HeaderButtons = () => (
-    <Space>
-      <Popconfirm
-        title="Discard changes?"
-        description="Are you sure you want to discard all unsaved changes?"
-        icon={<QuestionCircleOutlined style={{ color: '#ff4d4f' }} />}
-        okButtonProps={{ danger: true }}
-        onConfirm={() => {
-          // Reset form to initial values without redirecting
-          if (initial) {
-            form.reset({
-              title: initial.title,
-              description: initial.description || '',
-              refKey: initial.refKey,
-              slackWebhookUrl: initial.slackWebhookUrl || '',
-              fields: initial.fields,
-            })
-            setFields(initial.fields)
-            setSlackEnabled(!!initial.slackWebhookUrl)
-          } else {
-            form.reset({
-              title: '',
-              description: '',
-              refKey: refKeyHint || '',
-              slackWebhookUrl: '',
-              fields: [],
-            })
-            setFields([])
-            setSlackEnabled(false)
-          }
-          notificationApi.success({
-            message: 'Success',
-            description: 'Changes discarded successfully!',
+  // Check Google authentication status
+  useEffect(() => {
+    const checkGoogleAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/google/status', {
+          credentials: 'include',
+        })
+        const data = await response.json()
+
+        if (data.ok && data.data) {
+          setGoogleAuthStatus({
+            authenticated: data.data.authenticated,
+            user: data.data.user,
+            loading: false,
           })
-        }}
-        okText="Yes, Discard"
-        cancelText="Cancel"
-        disabled={!isDirty}
-      >
-        <Button danger icon={<CloseOutlined />} disabled={!isDirty}>
+        } else {
+          setGoogleAuthStatus({
+            authenticated: false,
+            user: null,
+            loading: false,
+          })
+        }
+      } catch (error) {
+        console.error('Failed to check Google auth status:', error)
+        setGoogleAuthStatus({
+          authenticated: false,
+          user: null,
+          loading: false,
+        })
+      }
+    }
+
+    checkGoogleAuth()
+
+    // Handle OAuth callback parameters
+    const urlParams = new URLSearchParams(window.location.search)
+    const googleAuth = urlParams.get('google_auth')
+
+    if (googleAuth === 'success') {
+      notificationApi.success({
+        message: 'Success',
+        description: 'Google authentication successful!',
+      })
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname)
+      // Refresh auth status
+      checkGoogleAuth()
+    } else if (googleAuth === 'error') {
+      notificationApi.error({
+        message: 'Authentication Failed',
+        description: 'Google authentication failed. Please try again.',
+      })
+      // Clean up URL
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+  }, [notificationApi])
+
+  // Capture initial field structure and Google Sheet URL for change detection
+  useEffect(() => {
+    if (mode === 'edit' && initial?.fields) {
+      const fieldsSnapshot = JSON.stringify(
+        initial.fields.map((f) => ({ key: f.key, label: f.label, type: f.type }))
+      )
+      setInitialFieldsSnapshot(fieldsSnapshot)
+      setInitialGoogleSheetUrl(initial.googleSheetUrl || '')
+    }
+  }, [initial, mode])
+
+  // Reset Google Sheet validation when URL changes
+  useEffect(() => {
+    setGoogleSheetValidated(false)
+    setGoogleSheetValidationError('')
+  }, [watchedValues.googleSheetUrl])
+
+  // Header buttons component (Save and Discard)
+  const HeaderButtons = () => {
+    return (
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <Button
+          danger
+          icon={<CloseOutlined />}
+          disabled={!isDirty}
+          onClick={() => {
+            // Reset form to initial values
+            if (initial) {
+              form.reset({
+                title: initial.title,
+                description: initial.description || '',
+                refKey: initial.refKey,
+                slackWebhookUrl: initial.slackWebhookUrl || '',
+                fields: initial.fields,
+              })
+              setFields(initial.fields)
+              setSlackEnabled(initial.slackEnabled ?? false)
+            } else {
+              form.reset({
+                title: '',
+                description: '',
+                refKey: refKeyHint || '',
+                slackWebhookUrl: '',
+                fields: [],
+              })
+              setFields([])
+              setSlackEnabled(false)
+            }
+          }}
+        >
           Discard Changes
         </Button>
-      </Popconfirm>
-      <Button
-        type="primary"
-        icon={<SaveOutlined />}
-        loading={upsertFormMutation.isPending}
-        disabled={!watchedValues.title?.trim() || !watchedValues.refKey?.trim()}
-        onClick={async () => {
-          // Get current form values
-          const formValues = form.getValues()
+        <Button
+          type="primary"
+          icon={<SaveOutlined />}
+          loading={upsertFormMutation.isPending || testingGoogleSheet}
+          onClick={async () => {
+            // If Google Sheet is enabled, validate it first (check existence and writability only)
+            if (
+              googleSheetEnabled &&
+              watchedValues.googleSheetUrl?.trim() &&
+              googleAuthStatus.authenticated
+            ) {
+              setTestingGoogleSheet(true)
+              try {
+                // Call the validation endpoint directly
+                const response = await fetch('/api/forms/validate-google-sheet', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    credentials: 'include',
+                  },
+                  body: JSON.stringify({
+                    googleSheetUrl: watchedValues.googleSheetUrl,
+                    refKey: watchedValues.refKey,
+                    fields: fields,
+                  }),
+                })
 
-          // Basic validation
-          if (!formValues.title?.trim()) {
-            notificationApi.error({
-              message: 'Validation Error',
-              description: 'Form title is required',
-            })
-            return
-          }
+                const data = await response.json()
+                if (!data.ok) {
+                  // Validation failed, show error and stop
+                  notificationApi.error({
+                    key: 'google-sheet-validation',
+                    message: 'Google Sheet Validation Failed',
+                    description: data.error || 'Please fix the Google Sheet URL and try again.',
+                  })
+                  setTestingGoogleSheet(false)
+                  return
+                }
 
-          if (!formValues.refKey?.trim()) {
-            notificationApi.error({
-              message: 'Validation Error',
-              description: 'Form URL is required',
-            })
-            return
-          }
+                // Check if a new spreadsheet was created
+                if (data.newSpreadsheetUrl) {
+                  // Update the form with the new URL
+                  form.setValue('googleSheetUrl', data.newSpreadsheetUrl)
+                  notificationApi.success({
+                    key: 'google-sheet-validation',
+                    message: 'New Google Sheet Created!',
+                    description:
+                      data.message || 'A new spreadsheet has been created and linked to your form.',
+                    duration: 5,
+                  })
+                } else {
+                  // Validation successful for existing sheet
+                  notificationApi.success({
+                    key: 'google-sheet-validation',
+                    message: 'Google Sheet Validated',
+                    description: 'Sheet exists and is writable!',
+                  })
+                }
+              } catch (error: any) {
+                // Validation error occurred
+                notificationApi.error({
+                  key: 'google-sheet-validation',
+                  message: 'Google Sheet Validation Error',
+                  description: error.message || 'Could not validate Google Sheet connection.',
+                })
+                setTestingGoogleSheet(false)
+                return
+              } finally {
+                setTestingGoogleSheet(false)
+              }
+            }
 
-          // If no fields exist, still allow save (empty form is valid)
-          if (fields.length === 0) {
-            notificationApi.warning({
-              message: 'No Fields',
-              description: 'Form has no fields yet, but will be saved',
-            })
-          }
-
-          // Create complete form data including fields
-          const completeFormData: FormConfigData = {
-            ...formValues,
-            fields: fields,
-          }
-
-          // Call onSubmit with complete form data
-          await onSubmit(completeFormData)
-        }}
-      >
-        Save Form
-      </Button>
-    </Space>
-  )
+            // Proceed with form submission
+            form.handleSubmit(onSubmit)()
+          }}
+        >
+          Save Form
+        </Button>
+      </div>
+    )
+  }
 
   // Initialize form data based on mode and props
   useEffect(() => {
+    // Don't update form state if we're currently saving to prevent overwrites
+    if (isSaving) {
+      return
+    }
+
+    // Only initialize once to prevent resetting after save
+    if (hasInitialized && mode === 'edit') {
+      return
+    }
+
     if (aiGeneratedForm) {
       form.reset({
         title: aiGeneratedForm.title || '',
         description: aiGeneratedForm.description || '',
         refKey: '',
         slackWebhookUrl: '',
+        googleSheetUrl: '',
         fields: aiGeneratedForm.fields || [],
       })
       setFields(aiGeneratedForm.fields || [])
       setLoadingInitial(false)
+      setHasInitialized(true) // Mark as initialized
       return
     }
 
@@ -219,12 +347,15 @@ export function BuilderForm({
           description: sourceForm.description || '',
           refKey: '',
           slackWebhookUrl: sourceForm.slackWebhookUrl || '',
+          googleSheetUrl: sourceForm.googleSheetUrl || '',
           fields: sourceForm.fields || [],
         })
         setFields(sourceForm.fields || [])
-        setSlackEnabled(!!sourceForm.slackWebhookUrl)
+        setSlackEnabled(sourceForm.slackEnabled ?? false)
+        setGoogleSheetEnabled(!!sourceForm.googleSheetEnabled)
       }
       setLoadingInitial(false)
+      setHasInitialized(true) // Mark as initialized
       return
     }
 
@@ -234,15 +365,19 @@ export function BuilderForm({
         description: initial.description || '',
         refKey: initial.refKey,
         slackWebhookUrl: initial.slackWebhookUrl || '',
+        googleSheetUrl: initial.googleSheetUrl || '',
         fields: initial.fields,
       })
       setFields(initial.fields)
-      setSlackEnabled(!!initial.slackWebhookUrl)
+      setSlackEnabled(initial.slackEnabled ?? false)
+      setGoogleSheetEnabled(!!initial.googleSheetEnabled)
       setLoadingInitial(false) // Set loading to false after processing initial data
+      setHasInitialized(true) // Mark as initialized
     } else if (mode === 'create') {
       setLoadingInitial(false)
+      setHasInitialized(true) // Mark as initialized
     }
-  }, [initial, aiGeneratedForm, duplicateFrom, formsData, form, mode])
+  }, [initial, aiGeneratedForm, duplicateFrom, formsData, form, mode, hasInitialized, isSaving])
 
   // Update form fields when fields array changes
   useEffect(() => {
@@ -257,14 +392,36 @@ export function BuilderForm({
     }
   }
 
-  // Field management functions
-  const addField = (field: FormField) => {
-    setFields((prev) => [...prev, field])
-    setEditingIndex(fields.length)
+  // Handle Google Sheet toggle
+  const handleGoogleSheetToggle = (enabled: boolean) => {
+    setGoogleSheetEnabled(enabled)
+    // Don't clear the URL when disabling - preserve it for when they enable again
+  }
+
+  // Field management functions - currently unused but may be needed for future features
+  // const addField = (field: FormField) => {
+  //   setFields((prev) => [...prev, field])
+  //   setEditingIndex(null) // Close the editor after adding
+  // }
+
+  const addNewField = () => {
+    const newField: FormField = {
+      key: `field_${Date.now()}`,
+      label: 'New Field',
+      type: 'text',
+      required: false,
+    }
+    setFields((prev) => [...prev, newField])
+    setEditingIndex(fields.length) // Edit the newly added field
   }
 
   const updateField = (index: number, field: FormField) => {
-    setFields((prev) => prev.map((f, i) => (i === index ? field : f)))
+    setFields((prev) => {
+      const newFields = prev.map((f, i) => (i === index ? field : f))
+      // Immediately update the form's fields value to keep it in sync
+      setValue('fields', newFields, { shouldValidate: true, shouldDirty: true })
+      return newFields
+    })
   }
 
   const removeField = (index: number) => {
@@ -298,15 +455,119 @@ export function BuilderForm({
       }
     }
 
+    // Auto-disable Slack if webhook URL is empty or invalid
+    let finalSlackEnabled = slackEnabled
+    if (
+      slackEnabled &&
+      (!data.slackWebhookUrl?.trim() ||
+        !data.slackWebhookUrl.startsWith('https://hooks.slack.com/'))
+    ) {
+      finalSlackEnabled = false
+      setSlackEnabled(false)
+
+      if (!data.slackWebhookUrl?.trim()) {
+        notificationApi.warning({
+          message: 'Slack Disabled',
+          description: 'Slack notifications disabled due to empty webhook URL',
+        })
+      } else if (!data.slackWebhookUrl.startsWith('https://hooks.slack.com/')) {
+        notificationApi.warning({
+          message: 'Slack Disabled',
+          description: 'Slack notifications disabled due to invalid webhook URL format',
+        })
+      }
+    }
+
+    // Auto-disable Google Sheets if URL is empty or invalid
+    let finalGoogleSheetEnabled = googleSheetEnabled
+    if (
+      googleSheetEnabled &&
+      (!data.googleSheetUrl?.trim() ||
+        !data.googleSheetUrl.includes('docs.google.com/spreadsheets'))
+    ) {
+      finalGoogleSheetEnabled = false
+      setGoogleSheetEnabled(false)
+
+      if (!data.googleSheetUrl?.trim()) {
+        notificationApi.warning({
+          message: 'Google Sheets Disabled',
+          description: 'Google Sheets integration disabled due to empty URL',
+        })
+      } else if (!data.googleSheetUrl.includes('docs.google.com/spreadsheets')) {
+        notificationApi.warning({
+          message: 'Google Sheets Disabled',
+          description: 'Google Sheets integration disabled due to invalid URL format',
+        })
+      }
+    }
+
+    // Check if form structure or Google Sheet URL has changed (for automatic resync)
+    const currentFieldsSnapshot = JSON.stringify(
+      fields.map((f) => ({ key: f.key, label: f.label, type: f.type }))
+    )
+    const hasStructureChanged =
+      mode === 'edit' && initialFieldsSnapshot && initialFieldsSnapshot !== currentFieldsSnapshot
+    const hasGoogleSheetUrlChanged =
+      mode === 'edit' && initialGoogleSheetUrl !== (data.googleSheetUrl || '')
+    const hasGoogleSheetsIntegration =
+      finalGoogleSheetEnabled && data.googleSheetUrl && googleAuthStatus.authenticated
+    const needsAutomaticResync =
+      hasGoogleSheetsIntegration && (hasStructureChanged || hasGoogleSheetUrlChanged)
+
     try {
-      await upsertFormMutation.mutateAsync({
+      // Make sure to use the current fields state, not the form data fields
+      const savedForm = await upsertFormMutation.mutateAsync({
         ...data,
+        fields: fields, // Use current fields state instead of form data
+        slackEnabled: finalSlackEnabled, // Use the final slack enabled state
+        googleSheetEnabled: finalGoogleSheetEnabled, // Use the final google sheet enabled state
         prevRefKey: initial?.refKey,
       })
-      notificationApi.success({
-        message: 'Success',
-        description: 'Form saved successfully!',
+
+      // Update local state to match the saved form data
+      setFields(savedForm.fields || fields)
+
+      // Also update the form values to keep everything in sync
+      form.setValue('fields', savedForm.fields || fields, {
+        shouldValidate: false,
+        shouldDirty: false,
       })
+
+      // Update the initial snapshots after successful save
+      if (mode === 'edit') {
+        setInitialFieldsSnapshot(currentFieldsSnapshot)
+        setInitialGoogleSheetUrl(data.googleSheetUrl || '')
+      }
+
+      // Auto-resync to Google Sheets if structure or URL changed
+      if (needsAutomaticResync) {
+        let resyncReason = ''
+        if (hasStructureChanged && hasGoogleSheetUrlChanged) {
+          resyncReason = 'form structure and Google Sheet URL changes'
+        } else if (hasStructureChanged) {
+          resyncReason = 'form structure changes'
+        } else if (hasGoogleSheetUrlChanged) {
+          resyncReason = 'Google Sheet URL change'
+        }
+
+        notificationApi.success({
+          key: 'form-save',
+          message: 'Form Saved & Auto-Resync',
+          description: `Form saved successfully! Automatically resyncing existing responses to Google Sheets due to ${resyncReason}...`,
+          duration: 4,
+        })
+
+        // Automatically resync responses
+        setTimeout(() => {
+          handleSyncResponses()
+        }, 1000)
+      } else {
+        notificationApi.success({
+          key: 'form-save',
+          message: 'Form Saved',
+          description: 'Form saved successfully!',
+        })
+      }
 
       if (mode === 'create') {
         window.location.href = `/builder/${encodeURIComponent(data.refKey)}`
@@ -316,11 +577,14 @@ export function BuilderForm({
         message: 'Save Failed',
         description: error?.message || 'Failed to save form',
       })
+    } finally {
+      setIsSaving(false)
     }
   }
 
   // Test Slack webhook
   const handleTestSlack = async () => {
+    setTestingSlack(true)
     try {
       const response = await fetch('/api/forms/test-slack', {
         method: 'POST',
@@ -337,20 +601,342 @@ export function BuilderForm({
       const data = await response.json()
       if (data.ok) {
         notificationApi.success({
-          message: 'Success',
+          key: 'slack-test',
+          message: 'Test Successful',
           description: 'Slack test message sent successfully!',
         })
       } else {
         notificationApi.error({
-          message: 'Slack Test Failed',
-          description: data.error || 'Test failed',
+          key: 'slack-test',
+          message: 'Test Failed',
+          description: data.error || 'Slack test failed',
         })
       }
     } catch (error: any) {
       notificationApi.error({
-        message: 'Slack Test Failed',
-        description: error.message || 'Test failed',
+        key: 'slack-test',
+        message: 'Test Failed',
+        description: error.message || 'Slack test failed',
       })
+    } finally {
+      setTestingSlack(false)
+    }
+  }
+
+  // Test Google Sheet connection
+  const handleTestGoogleSheet = async () => {
+    setTestingGoogleSheet(true)
+    try {
+      const response = await fetch('/api/forms/test-google-sheet', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          credentials: 'include',
+        },
+        body: JSON.stringify({
+          refKey: watchedValues.refKey,
+          googleSheetUrl: watchedValues.googleSheetUrl,
+          fields: fields,
+        }),
+      })
+
+      const data = await response.json()
+      if (data.ok) {
+        setGoogleSheetValidated(true)
+        setGoogleSheetValidationError('')
+
+        // If a new spreadsheet was created, update the form field
+        if (data.newSpreadsheetUrl) {
+          form.setValue('googleSheetUrl', data.newSpreadsheetUrl, {
+            shouldValidate: false,
+            shouldDirty: false,
+          })
+          setInitialGoogleSheetUrl(data.newSpreadsheetUrl)
+
+          notificationApi.success({
+            key: 'google-sheet-test',
+            message: 'New Google Sheet Created',
+            description: `Created new spreadsheet "${data.details?.spreadsheetTitle}" and exported ${data.details?.responsesExported || 0} responses`,
+            duration: 6,
+          })
+
+          // Save the form with the new Google Sheet URL
+          setTimeout(async () => {
+            try {
+              const formData = form.getValues()
+              await upsertFormMutation.mutateAsync({
+                ...formData,
+                fields: fields,
+                googleSheetEnabled,
+                googleSheetUrl: data.newSpreadsheetUrl,
+                prevRefKey: initial?.refKey,
+              })
+            } catch (error) {
+              console.error('Failed to update form with new Google Sheet URL:', error)
+            }
+          }, 500)
+        } else if (data.details?.responsesExported !== undefined) {
+          // Sheet was validated and responses were exported
+          notificationApi.success({
+            key: 'google-sheet-test',
+            message: 'Sheet Validated & Synced',
+            description: `${data.details.status}. Exported ${data.details.responsesExported} responses.`,
+            duration: 5,
+          })
+        } else {
+          // Simple validation success
+          notificationApi.success({
+            key: 'google-sheet-test',
+            message: 'Test Successful',
+            description: data.message || 'Google Sheet connection test successful!',
+          })
+        }
+      } else {
+        setGoogleSheetValidated(false)
+        setGoogleSheetValidationError(data.error || 'Google Sheet test failed')
+        notificationApi.error({
+          key: 'google-sheet-test',
+          message: 'Test Failed',
+          description: data.error || 'Google Sheet test failed',
+        })
+      }
+    } catch (error: any) {
+      setGoogleSheetValidated(false)
+      setGoogleSheetValidationError(error.message || 'Google Sheet test failed')
+      notificationApi.error({
+        key: 'google-sheet-test',
+        message: 'Test Failed',
+        description: error.message || 'Google Sheet test failed',
+      })
+    } finally {
+      setTestingGoogleSheet(false)
+    }
+  }
+
+  // Handle Google authentication with popup
+  const handleGoogleAuth = async () => {
+    try {
+      const response = await fetch('/api/auth/google?popup=true', {
+        credentials: 'include',
+      })
+      const data = await response.json()
+
+      if (data.ok && data.data.authUrl) {
+        // Open popup for OAuth
+        const popup = window.open(
+          data.data.authUrl,
+          'google-auth',
+          'width=500,height=600,scrollbars=yes,resizable=yes'
+        )
+
+        // Check if popup was blocked
+        if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+          notificationApi.error({
+            message: 'Popup Blocked',
+            description:
+              'Please allow popups for this site and try again. You can authenticate by temporarily disabling your popup blocker.',
+          })
+          return
+        }
+
+        // Function to refresh auth status
+        const refreshAuthStatus = async () => {
+          try {
+            const response = await fetch('/api/auth/google/status', {
+              credentials: 'include',
+            })
+            const data = await response.json()
+
+            if (data.ok && data.data) {
+              setGoogleAuthStatus({
+                authenticated: data.data.authenticated,
+                user: data.data.user,
+                loading: false,
+              })
+            }
+          } catch (error) {
+            console.error('Failed to refresh auth status:', error)
+          }
+        }
+
+        // Listen for messages from popup
+        const handleMessage = (event: MessageEvent) => {
+          if (event.origin !== window.location.origin) return
+
+          if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+            popup?.close()
+            window.removeEventListener('message', handleMessage)
+
+            notificationApi.success({
+              message: 'Success',
+              description: 'Google authentication successful!',
+            })
+
+            // Refresh auth status from server
+            refreshAuthStatus()
+          } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
+            popup?.close()
+            window.removeEventListener('message', handleMessage)
+
+            notificationApi.error({
+              message: 'Authentication Failed',
+              description: 'Google authentication failed. Please try again.',
+            })
+          }
+        }
+
+        window.addEventListener('message', handleMessage)
+
+        // Handle popup being closed manually
+        const checkClosed = setInterval(() => {
+          if (popup?.closed) {
+            clearInterval(checkClosed)
+            window.removeEventListener('message', handleMessage)
+
+            // Refresh auth status when popup is closed (in case auth was successful but message wasn't received)
+            setTimeout(() => {
+              refreshAuthStatus()
+            }, 500)
+          }
+        }, 1000)
+      } else {
+        notificationApi.error({
+          message: 'Authentication Error',
+          description: data.error || 'Failed to initiate Google authentication',
+        })
+      }
+    } catch (error: any) {
+      notificationApi.error({
+        message: 'Authentication Error',
+        description: error.message || 'Failed to initiate Google authentication',
+      })
+    }
+  }
+
+  // Handle Google logout
+  const handleGoogleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/google/logout', {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = await response.json()
+
+      if (data.ok) {
+        setGoogleAuthStatus({
+          authenticated: false,
+          user: null,
+          loading: false,
+        })
+
+        notificationApi.success({
+          message: 'Success',
+          description: 'Successfully logged out from Google',
+        })
+      } else {
+        notificationApi.error({
+          message: 'Logout Failed',
+          description: data.error || 'Failed to logout',
+        })
+      }
+    } catch (error: any) {
+      notificationApi.error({
+        message: 'Logout Failed',
+        description: error.message || 'Failed to logout',
+      })
+    }
+  }
+
+  // Sync existing responses to Google Sheets
+  const handleSyncResponses = async () => {
+    if (!watchedValues.googleSheetUrl || !googleAuthStatus.authenticated) {
+      notificationApi.error({
+        message: 'Resync Failed',
+        description: 'Google Sheets URL and authentication required',
+      })
+      return
+    }
+
+    setSyncingResponses(true)
+
+    // Directly proceed with resync - the export endpoint will handle sheet creation if needed
+    try {
+      const response = await fetch('/api/forms/export-responses', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          refKey: watchedValues.refKey,
+          googleSheetUrl: watchedValues.googleSheetUrl,
+          fields: fields,
+        }),
+      })
+
+      const data = await response.json()
+      if (data.ok) {
+        // If a new spreadsheet was created, update the form with the new URL
+        if (data.newSpreadsheetUrl) {
+          form.setValue('googleSheetUrl', data.newSpreadsheetUrl, {
+            shouldValidate: false,
+            shouldDirty: false,
+          })
+          setInitialGoogleSheetUrl(data.newSpreadsheetUrl) // Update initial URL to prevent unnecessary resync prompts
+
+          notificationApi.success({
+            key: 'resync-success',
+            message: 'New Google Sheet Created',
+            description: `Created new spreadsheet and exported ${data.details?.responsesExported || 0} responses. The form has been updated with the new URL.`,
+            duration: 6,
+          })
+
+          // Save the form with the new Google Sheet URL
+          setTimeout(async () => {
+            try {
+              const formData = form.getValues()
+              await upsertFormMutation.mutateAsync({
+                ...formData,
+                fields: fields,
+                googleSheetEnabled,
+                googleSheetUrl: data.newSpreadsheetUrl,
+                prevRefKey: initial?.refKey,
+              })
+            } catch (error) {
+              console.error('Failed to update form with new Google Sheet URL:', error)
+            }
+          }, 500)
+        } else {
+          notificationApi.success({
+            key: 'resync-success',
+            message: 'Resync Successful',
+            description:
+              data.message || 'Successfully resynced existing responses to Google Sheets',
+          })
+        }
+      } else {
+        notificationApi.error({
+          key: 'resync-error',
+          message: 'Resync Failed',
+          description: data.error || 'Failed to resync responses',
+        })
+      }
+    } catch (error: any) {
+      notificationApi.error({
+        key: 'resync-error',
+        message: 'Resync Failed',
+        description: error.message || 'Failed to resync responses',
+      })
+    } finally {
+      setSyncingResponses(false)
+    }
+  }
+
+  // Open Google Sheet in new tab
+  const handleOpenSheet = () => {
+    const sheetUrl = watchedValues.googleSheetUrl
+    if (sheetUrl?.trim()) {
+      window.open(sheetUrl, '_blank')
     }
   }
 
@@ -376,10 +962,10 @@ export function BuilderForm({
   // Delete form handler matching FormsList logic
   const [loadingDelete, setLoadingDelete] = useState(false)
   const router = useRouter()
-  
+
   const handleDeleteClick = async () => {
     if (!initial?.refKey) return
-    
+
     setLoadingDelete(true)
     try {
       const response = await fetch(`/api/forms?refKey=${encodeURIComponent(initial.refKey)}`, {
@@ -505,19 +1091,17 @@ export function BuilderForm({
                 <Title level={4} style={{ margin: 0, color: '#fff' }}>
                   Form Fields
                 </Title>
-                {editingIndex === null && (
-                  <Button
-                    icon={<PlusOutlined />}
-                    onClick={() => setEditingIndex(-1)}
-                    style={{
-                      backgroundColor: '#fff',
-                      borderColor: '#d9d9d9',
-                      color: '#000',
-                    }}
-                  >
-                    Add Field
-                  </Button>
-                )}
+                <Button
+                  icon={<PlusOutlined />}
+                  onClick={addNewField}
+                  style={{
+                    backgroundColor: '#fff',
+                    borderColor: '#d9d9d9',
+                    color: '#000',
+                  }}
+                >
+                  Add Field
+                </Button>
               </div>
             }
           >
@@ -538,38 +1122,14 @@ export function BuilderForm({
                     <FieldEditor
                       value={fields[editingIndex]}
                       onSave={(field) => updateField(editingIndex, field)}
+                      onCancel={() => setEditingIndex(null)}
+                      existingFields={fields}
+                      editingIndex={editingIndex}
                     />
                   ) : null
                 }
               />
             </div>
-
-            {editingIndex === -1 && (
-              <Card style={{ marginTop: 16 }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 16,
-                  }}
-                >
-                  <Title level={5} style={{ margin: 0 }}>
-                    Add New Field
-                  </Title>
-                  <Button type="text" onClick={() => setEditingIndex(null)} style={{ padding: 0 }}>
-                    ✕
-                  </Button>
-                </div>
-                <FieldEditor
-                  value={undefined}
-                  onSave={(field) => {
-                    addField(field)
-                    // Keep the field expanded for editing after adding
-                  }}
-                />
-              </Card>
-            )}
           </Card>
         </div>
 
@@ -619,13 +1179,151 @@ export function BuilderForm({
                         placeholder="https://hooks.slack.com/services/..."
                         style={{ flex: 1 }}
                       />
-                      <Button onClick={handleTestSlack} disabled={!field.value?.trim()}>
+                      <Button
+                        onClick={handleTestSlack}
+                        disabled={!field.value?.trim()}
+                        loading={testingSlack}
+                      >
                         Test
                       </Button>
                     </Space.Compact>
                   </Form.Item>
                 )}
               />
+            )}
+          </Card>
+
+          {/* Google Sheet Integration Card */}
+          <Card
+            title={<span style={{ color: '#fff' }}>Link to Google Sheet</span>}
+            size="small"
+            style={{ marginTop: 16 }}
+            styles={{
+              header: {
+                background: 'linear-gradient(135deg, #42a5f5 0%, #478ed1 100%)',
+                color: '#fff',
+              },
+              body: {
+                display: googleSheetEnabled ? 'block' : 'none',
+                padding: googleSheetEnabled ? '12px' : 0,
+              },
+            }}
+            extra={
+              <Switch
+                checked={googleSheetEnabled}
+                onChange={handleGoogleSheetToggle}
+                checkedChildren="ON"
+                unCheckedChildren="OFF"
+                size="small"
+                style={{
+                  backgroundColor: googleSheetEnabled ? '#52c41a' : undefined,
+                }}
+              />
+            }
+          >
+            {googleSheetEnabled && (
+              <>
+                {/* Google Authentication Status */}
+                <div
+                  style={{
+                    marginBottom: 12,
+                    padding: '8px',
+                    backgroundColor: '#f5f5f5',
+                    borderRadius: '4px',
+                  }}
+                >
+                  {googleAuthStatus.loading ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Spin size="small" />
+                      <span style={{ fontSize: '12px' }}>Checking Google authentication...</span>
+                    </div>
+                  ) : googleAuthStatus.authenticated ? (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <span style={{ color: '#52c41a', fontSize: '12px' }}>
+                        ✓ Authenticated as {googleAuthStatus.user?.email}
+                      </span>
+                      <Button size="small" danger onClick={handleGoogleLogout}>
+                        Logout
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}
+                    >
+                      <span style={{ color: '#ff4d4f', fontSize: '12px' }}>
+                        ⚠ Google authentication required
+                      </span>
+                      <Button size="small" type="primary" onClick={handleGoogleAuth}>
+                        Authenticate
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <Controller
+                  name="googleSheetUrl"
+                  control={control}
+                  render={({ field }) => (
+                    <Form.Item
+                      required={googleSheetEnabled}
+                      validateStatus={
+                        errors.googleSheetUrl || googleSheetValidationError ? 'error' : ''
+                      }
+                      help={errors.googleSheetUrl?.message || googleSheetValidationError}
+                      style={{ marginBottom: 12 }}
+                    >
+                      <Space.Compact style={{ display: 'flex', width: '100%' }}>
+                        <Input
+                          {...field}
+                          placeholder="https://docs.google.com/spreadsheets/d/..."
+                          style={{ flex: 1 }}
+                          disabled={!googleAuthStatus.authenticated}
+                        />
+                        <Button
+                          onClick={handleTestGoogleSheet}
+                          disabled={!field.value?.trim() || !googleAuthStatus.authenticated}
+                          loading={testingGoogleSheet}
+                          title={
+                            !googleAuthStatus.authenticated
+                              ? 'Please authenticate with Google first'
+                              : undefined
+                          }
+                        >
+                          Test
+                        </Button>
+                      </Space.Compact>
+                    </Form.Item>
+                  )}
+                />
+                {watchedValues.googleSheetUrl?.trim() && (
+                  <Space direction="vertical" style={{ width: '100%' }}>
+                    <Button icon={<LinkOutlined />} onClick={handleOpenSheet} block>
+                      Open Sheet
+                    </Button>
+                    {mode === 'edit' && googleAuthStatus.authenticated && (
+                      <Button
+                        icon={<SyncOutlined />}
+                        onClick={handleSyncResponses}
+                        loading={syncingResponses}
+                        disabled={!googleAuthStatus.authenticated}
+                        block
+                      >
+                        {syncingResponses ? 'Resyncing...' : 'Resync Responses'}
+                      </Button>
+                    )}
+                  </Space>
+                )}
+              </>
             )}
           </Card>
 
@@ -696,12 +1394,7 @@ export function BuilderForm({
                       cancelText="Cancel"
                       onConfirm={handleDeleteClick}
                     >
-                      <Button
-                        block
-                        danger
-                        icon={<DeleteOutlined />}
-                        loading={loadingDelete}
-                      >
+                      <Button block danger icon={<DeleteOutlined />} loading={loadingDelete}>
                         Delete
                       </Button>
                     </Popconfirm>

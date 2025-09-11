@@ -64,8 +64,14 @@ export function SettingsClient({
         aiModel: settings.aiModel || 'gpt-5-mini',
         apiKey: settings.apiKey || '',
       })
+    } else if (!isLoading && !error) {
+      // If no settings exist yet, use defaults
+      reset({
+        aiModel: 'gpt-5-mini',
+        apiKey: '',
+      })
     }
-  }, [settings, reset])
+  }, [settings, reset, isLoading, error])
 
   // Mutation for saving settings
   const saveMutation = useUpdateSettings(

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withApiAuth } from '@/lib/auth-supabase'
 import { ERROR_MESSAGES, HTTP_STATUS } from '@/lib/constants'
+import { logger } from '@/lib/logger'
 import { deleteFromR2, extractKeyFromUrl } from '@/lib/r2-storage'
 import { supabase, FormRecord } from '@/lib/supabase'
 
@@ -29,7 +30,7 @@ async function handleGet(req: NextRequest) {
         try {
           data.fields = JSON.parse(data.fields)
         } catch (e) {
-          console.error('Failed to parse fields JSON:', e)
+          logger.error('Failed to parse fields JSON', e)
         }
       }
 
@@ -59,7 +60,7 @@ async function handleGet(req: NextRequest) {
         try {
           form.fields = JSON.parse(form.fields)
         } catch (e) {
-          console.error('Failed to parse fields JSON for form:', form.refKey, e)
+          logger.error(`Failed to parse fields JSON for form: ${form.refKey}`, e)
         }
       }
       return form
@@ -67,7 +68,7 @@ async function handleGet(req: NextRequest) {
 
     return NextResponse.json({ ok: true, data: forms })
   } catch (error: any) {
-    console.error('[API] Forms GET error:', error)
+    logger.error('[API] Forms GET error:', error)
     return errorResponse(
       error?.message || ERROR_MESSAGES.GENERIC,
       HTTP_STATUS.INTERNAL_SERVER_ERROR
@@ -85,6 +86,25 @@ async function handlePost(req: NextRequest) {
     }
 
     const body = await req.json()
+    logger.info('[API] Form save request:', {
+      refKey: body.refKey,
+      googleSheetEnabled: body.googleSheetEnabled,
+      googleSheetUrl: body.googleSheetUrl ? '[URL_PROVIDED]' : null,
+    })
+
+    // If Google Sheets is enabled, get the associated Google auth ID
+    let googleAuthId = null
+    if (body.googleSheetEnabled && body.googleSheetUrl) {
+      // Check if there's a recent Google auth in the database
+      const { data: recentAuth } = await supabase
+        .from('GoogleAuth')
+        .select('id')
+        .order('last_used_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      googleAuthId = recentAuth?.id || null
+    }
 
     // Prepare data for Supabase
     const formData: Partial<FormRecord> = {
@@ -92,14 +112,18 @@ async function handlePost(req: NextRequest) {
       title: body.title,
       description: body.description || null,
       slackWebhookUrl: body.slackWebhookUrl || null,
+      slackEnabled: body.slackEnabled || false,
+      googleSheetUrl: body.googleSheetUrl || null,
+      googleSheetEnabled: body.googleSheetEnabled || false,
+      google_auth_id: googleAuthId,
       fields: body.fields || [],
       updated_at: new Date().toISOString(),
-    }
+    } as any
 
     // Check if form exists
     const { data: existingForm } = await supabase
       .from('Forms')
-      .select('id')
+      .select('id, google_auth_id')
       .eq('refKey', body.refKey)
       .single()
 
@@ -135,13 +159,13 @@ async function handlePost(req: NextRequest) {
       try {
         result.fields = JSON.parse(result.fields)
       } catch (e) {
-        console.error('Failed to parse fields JSON:', e)
+        logger.error('Failed to parse fields JSON', e)
       }
     }
 
     return NextResponse.json({ ok: true, data: result })
   } catch (error: any) {
-    console.error('[API] Forms POST error:', error)
+    logger.error('[API] Forms POST error:', error)
     return errorResponse(
       error?.message || ERROR_MESSAGES.GENERIC,
       HTTP_STATUS.INTERNAL_SERVER_ERROR
@@ -165,7 +189,7 @@ async function handleDelete(req: NextRequest) {
       return errorResponse('Missing refKey parameter', HTTP_STATUS.BAD_REQUEST)
     }
 
-    console.log(`[API] Starting deletion process for form: ${refKey}`)
+    logger.info(`[API] Starting deletion process for form: ${refKey}`)
 
     // Step 1: Get all responses to find uploaded files
     const { data: responses, error: responseError } = await supabase
@@ -174,11 +198,11 @@ async function handleDelete(req: NextRequest) {
       .eq('refKey', refKey)
 
     if (responseError) {
-      console.error('[API] Error fetching responses:', responseError)
+      logger.error('[API] Error fetching responses:', responseError)
       // Continue with deletion even if we can't fetch responses
     }
 
-    console.log(`[API] Found ${responses?.length || 0} responses for form ${refKey}`)
+    logger.info(`[API] Found ${responses?.length || 0} responses for form ${refKey}`)
 
     // Step 2: Delete all files from R2 storage
     let filesDeleted = 0
@@ -197,10 +221,10 @@ async function handleDelete(req: NextRequest) {
                   const deleted = await deleteFromR2(fileKey)
                   if (deleted) {
                     filesDeleted++
-                    console.log(`[API] Deleted file: ${fileKey}`)
+                    logger.info(`[API] Deleted file: ${fileKey}`)
                   } else {
                     fileDeleteErrors++
-                    console.warn(`[API] Failed to delete file: ${fileKey}`)
+                    logger.warn(`[API] Failed to delete file: ${fileKey}`)
                   }
                 }
               }
@@ -216,23 +240,23 @@ async function handleDelete(req: NextRequest) {
                   const deleted = await deleteFromR2(fileKey)
                   if (deleted) {
                     filesDeleted++
-                    console.log(`[API] Deleted file from formData: ${fileKey}`)
+                    logger.info(`[API] Deleted file from formData: ${fileKey}`)
                   } else {
                     fileDeleteErrors++
-                    console.warn(`[API] Failed to delete file from formData: ${fileKey}`)
+                    logger.warn(`[API] Failed to delete file from formData: ${fileKey}`)
                   }
                 }
               }
             }
           }
         } catch (fileError) {
-          console.error(`[API] Error processing files for response ${response.id}:`, fileError)
+          logger.error(`[API] Error processing files for response ${response.id}:`, fileError)
           fileDeleteErrors++
         }
       }
     }
 
-    console.log(`[API] File deletion summary: ${filesDeleted} deleted, ${fileDeleteErrors} errors`)
+    logger.info(`[API] File deletion summary: ${filesDeleted} deleted, ${fileDeleteErrors} errors`)
 
     // Step 3: Delete all responses
     let responsesDeleted = 0
@@ -243,26 +267,23 @@ async function handleDelete(req: NextRequest) {
         .eq('refKey', refKey)
 
       if (deleteResponsesError) {
-        console.error('[API] Error deleting responses:', deleteResponsesError)
+        logger.error('[API] Error deleting responses:', deleteResponsesError)
         throw new Error(`Failed to delete responses: ${deleteResponsesError.message}`)
       }
-      
+
       responsesDeleted = count || responses.length
-      console.log(`[API] Deleted ${responsesDeleted} responses`)
+      logger.info(`[API] Deleted ${responsesDeleted} responses`)
     }
 
     // Step 4: Delete the form itself
-    const { error: deleteFormError } = await supabase
-      .from('Forms')
-      .delete()
-      .eq('refKey', refKey)
+    const { error: deleteFormError } = await supabase.from('Forms').delete().eq('refKey', refKey)
 
     if (deleteFormError) {
-      console.error('[API] Error deleting form:', deleteFormError)
+      logger.error('[API] Error deleting form:', deleteFormError)
       throw new Error(`Failed to delete form: ${deleteFormError.message}`)
     }
 
-    console.log(`[API] Successfully deleted form: ${refKey}`)
+    logger.info(`[API] Successfully deleted form: ${refKey}`)
 
     // Return success with summary
     return NextResponse.json({
@@ -276,7 +297,7 @@ async function handleDelete(req: NextRequest) {
       },
     })
   } catch (error: any) {
-    console.error('[API] Forms DELETE error:', error)
+    logger.error('[API] Forms DELETE error:', error)
     return errorResponse(
       error?.message || ERROR_MESSAGES.GENERIC,
       HTTP_STATUS.INTERNAL_SERVER_ERROR

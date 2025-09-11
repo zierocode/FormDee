@@ -130,13 +130,15 @@ export function ConditionalHeader() {
         </div>
       </Header>
 
-      {/* Menu Drawer */}
-      <SettingsDrawer
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        adminKey={adminKey}
-        onLogout={handleLogout}
-      />
+      {/* Menu Drawer - Only render when authenticated and have adminKey */}
+      {isAuthenticated && adminKey && (
+        <SettingsDrawer
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          adminKey={adminKey}
+          onLogout={handleLogout}
+        />
+      )}
     </>
   )
 }

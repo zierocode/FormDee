@@ -13,10 +13,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // If adminKey is provided, validate it against ADMIN_API_KEY
+    // If adminKey is provided, validate it using Supabase Auth
     if (adminKey && !authenticated) {
-      const validApiKey = process.env.ADMIN_API_KEY
-      if (!validApiKey || adminKey !== validApiKey) {
+      const { validateApiKey } = await import('@/lib/auth-supabase')
+      const validation = await validateApiKey(adminKey, 'ui')
+      if (!validation.isValid) {
         return NextResponse.json({ error: 'Invalid admin key' }, { status: 401 })
       }
     }
