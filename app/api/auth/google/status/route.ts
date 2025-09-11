@@ -4,6 +4,10 @@ import { ERROR_MESSAGES, HTTP_STATUS } from '@/lib/constants'
 import { validateAccessToken } from '@/lib/google-auth'
 import { supabase } from '@/lib/supabase'
 
+// Force dynamic rendering since we use headers for auth
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 /**
  * Check Google authentication status
  */

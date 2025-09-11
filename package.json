@@ -93,13 +93,11 @@
     "@ant-design/nextjs-registry": "^1.1.0",
     "@aws-sdk/client-s3": "^3.884.0",
     "@aws-sdk/s3-request-presigner": "^3.884.0",
-    "@googleapis/drive": "^15.0.0",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^3.10.0",
     "@supabase/supabase-js": "^2.57.2",
     "@tanstack/react-query": "^5.87.1",
     "@tanstack/react-query-devtools": "^5.87.3",
-    "@tanstack/react-table": "^8.21.3",
     "antd": "^5.27.3",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.18",
@@ -112,7 +110,6 @@
     "react-dom": "18.2.0",
     "react-hook-form": "^7.62.0",
     "react-hot-toast": "^2.6.0",
-    "react-intersection-observer": "^9.16.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

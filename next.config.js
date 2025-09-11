@@ -92,6 +92,35 @@ const nextConfig = {
   // Production optimizations
   experimental: {
     scrollRestoration: true,
+    // Optimize server components
+    serverComponentsExternalPackages: ['@supabase/supabase-js'],
+  },
+
+  // Optimize imports for smaller bundles
+  modularizeImports: {
+    antd: {
+      transform: 'antd/lib/{{member}}',
+    },
+    '@ant-design/icons': {
+      transform: '@ant-design/icons/lib/icons/{{member}}',
+    },
+    'lucide-react': {
+      transform: 'lucide-react/dist/esm/icons/{{kebabCase member}}',
+    },
+  },
+
+  // Reduce build time
+  swcMinify: true,
+
+  // Skip linting during build (we lint separately)
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
+  // Skip type checking during build (we check separately)
+  typescript: {
+    ignoreBuildErrors: false,
+    tsconfigPath: './tsconfig.json',
   },
 
   // Runtime config

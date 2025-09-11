@@ -3,6 +3,10 @@ import { withApiAuth } from '@/lib/auth-supabase'
 import { ERROR_MESSAGES, HTTP_STATUS } from '@/lib/constants'
 import { getAuthUrl } from '@/lib/google-auth'
 
+// Force dynamic rendering since we use headers for auth
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 /**
  * Initiate Google OAuth2 authentication flow
  */
