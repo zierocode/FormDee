@@ -5,6 +5,16 @@ PROJECT_DIR=~/FormDee
 BRANCH=main
 PM2_APP=formdee
 
+# Ubuntu server optimizations
+echo "🐧 Ubuntu Server Deployment Script"
+echo "=================================="
+
+# Check system info
+echo "📊 System Info:"
+lsb_release -a 2>/dev/null | grep Description || echo "Ubuntu Server"
+free -h | grep Mem
+echo ""
+
 # Set Node.js memory limit to prevent heap out of memory errors
 export NODE_OPTIONS="--max-old-space-size=4096"
 
@@ -16,6 +26,8 @@ rm -rf .next
 rm -f tsconfig.tsbuildinfo
 # Also clear Node.js cache to free up memory
 rm -rf node_modules/.cache
+# Clear npm cache to avoid deprecated package warnings
+npm cache clean --force 2>/dev/null || true
 
 echo "📥 Pulling latest code from Git ($BRANCH)..."
 git fetch origin
