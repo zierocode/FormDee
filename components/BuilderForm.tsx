@@ -357,15 +357,25 @@ export function BuilderForm({
     if (duplicateFrom && formsData) {
       const sourceForm = formsData.find((f) => f.refKey === duplicateFrom)
       if (sourceForm) {
+        // Ensure all validation fields are properly preserved during duplication
+        const duplicatedFields = (sourceForm.fields || []).map((field) => ({
+          ...field,
+          // Explicitly preserve all validation system fields
+          validationRule: field.validationRule,
+          pattern: field.pattern,
+          customPattern: field.customPattern,
+          validationDomain: field.validationDomain,
+        }))
+
         form.reset({
           title: `${sourceForm.title} (Copy)`,
           description: sourceForm.description || '',
           refKey: '',
           slackWebhookUrl: sourceForm.slackWebhookUrl || '',
           googleSheetUrl: '', // Don't duplicate Google Sheet URL
-          fields: sourceForm.fields || [],
+          fields: duplicatedFields,
         })
-        setFields(sourceForm.fields || [])
+        setFields(duplicatedFields)
         setSlackEnabled(sourceForm.slackEnabled ?? false)
         setGoogleSheetEnabled(false) // Don't duplicate Google Sheet settings
       }

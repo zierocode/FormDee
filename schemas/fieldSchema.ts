@@ -27,7 +27,11 @@ export const fieldSchema = z
     options: z.array(z.string().min(1, 'Option cannot be empty')).optional(),
     min: z.number().optional(),
     max: z.number().optional(),
-    pattern: z.string().optional(),
+    // Enhanced validation system
+    validationRule: z.string().optional(),
+    pattern: z.string().optional(), // Generated or legacy regex
+    customPattern: z.string().optional(),
+    validationDomain: z.string().optional(),
     acceptedTypes: z.array(z.string()).optional(),
     maxFileSize: z.number().optional(),
     allowMultiple: z.boolean().optional(),
@@ -103,7 +107,11 @@ export const fieldEditorSchema = z
       .string()
       .optional()
       .transform((val) => (val ? Number(val) : undefined)),
-    pattern: z.string().optional(),
+    // Enhanced validation system
+    validationRule: z.string().optional(),
+    pattern: z.string().optional(), // Generated or legacy regex
+    customPattern: z.string().optional(),
+    validationDomain: z.string().optional(),
     acceptedTypes: z
       .string()
       .optional()
@@ -151,3 +159,4 @@ export const fieldEditorSchema = z
   )
 
 export type FieldEditorData = z.input<typeof fieldEditorSchema>
+export type FieldEditorParsedData = z.output<typeof fieldEditorSchema>

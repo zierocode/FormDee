@@ -24,6 +24,11 @@ import { z } from 'zod'
 import { useForm as useFormQuery } from '@/hooks/use-forms'
 import { useSubmitResponse } from '@/hooks/use-responses'
 import { FormField } from '@/lib/types'
+import {
+  validateInput,
+  getValidationErrorMessage,
+  type ValidationRuleType,
+} from '@/lib/validation-rules'
 
 const { Title, Text, Paragraph } = Typography
 const { TextArea } = Input
@@ -44,46 +49,161 @@ export function FormRenderer({ refKey }: { refKey: string }) {
     const schemaObj: Record<string, any> = {}
 
     fields.forEach((field) => {
-      let fieldSchema: any
-
+      // Build schema based on field type with proper handling
       switch (field.type) {
         case 'email':
-          fieldSchema = z.string().email('Invalid email address')
+          if (field.required) {
+            let emailSchema: any = z
+              .string()
+              .min(1, `${field.label} is required`)
+              .email('Invalid email address')
+
+            if (field.validationRule && field.validationRule !== 'none') {
+              emailSchema = emailSchema.refine(
+                (value: string) => {
+                  return validateInput(
+                    value,
+                    field.validationRule as ValidationRuleType,
+                    field.customPattern,
+                    field.validationDomain
+                  )
+                },
+                { message: getValidationErrorMessage(field.validationRule as ValidationRuleType) }
+              )
+            }
+
+            schemaObj[field.key] = emailSchema
+          } else {
+            let emailSchema: any = z
+              .string()
+              .email('Invalid email address')
+              .optional()
+              .or(z.literal(''))
+
+            if (field.validationRule && field.validationRule !== 'none') {
+              emailSchema = emailSchema.refine(
+                (value: string | undefined) => {
+                  if (!value) return true
+                  return validateInput(
+                    value,
+                    field.validationRule as ValidationRuleType,
+                    field.customPattern,
+                    field.validationDomain
+                  )
+                },
+                { message: getValidationErrorMessage(field.validationRule as ValidationRuleType) }
+              )
+            }
+
+            schemaObj[field.key] = emailSchema
+          }
           break
+
         case 'number':
-          fieldSchema = z.number()
-          if (field.min !== undefined) fieldSchema = fieldSchema.min(field.min)
-          if (field.max !== undefined) fieldSchema = fieldSchema.max(field.max)
+          let numberSchema = z.number({
+            required_error: `${field.label} is required`,
+            invalid_type_error: `${field.label} must be a valid number`,
+          })
+
+          if (field.min !== undefined)
+            numberSchema = numberSchema.min(field.min, `Must be at least ${field.min}`)
+          if (field.max !== undefined)
+            numberSchema = numberSchema.max(field.max, `Must be at most ${field.max}`)
+
+          schemaObj[field.key] = field.required ? numberSchema : numberSchema.optional()
           break
+
         case 'date':
-          fieldSchema = z.string()
+          schemaObj[field.key] = field.required
+            ? z.string().min(1, `${field.label} is required`)
+            : z.string().optional().or(z.literal(''))
           break
+
         case 'checkbox':
           if (field.options && field.options.length > 0) {
-            fieldSchema = z.array(z.string()).optional()
+            // Multi-checkbox (array of selected options)
+            schemaObj[field.key] = field.required
+              ? z.array(z.string()).min(1, `Please select at least one ${field.label}`)
+              : z.array(z.string()).optional()
           } else {
-            fieldSchema = z.boolean().optional()
+            // Single checkbox (boolean)
+            schemaObj[field.key] = field.required
+              ? z.boolean().refine((val) => val === true, `${field.label} is required`)
+              : z.boolean().optional()
           }
           break
+
         case 'file':
-          fieldSchema = z.any().optional()
+          schemaObj[field.key] = field.required
+            ? z
+                .any()
+                .refine(
+                  (val) => val && (val.fileList?.length > 0 || val.length > 0),
+                  `${field.label} is required`
+                )
+            : z.any().optional()
           break
+
+        case 'select':
+        case 'radio':
+          schemaObj[field.key] = field.required
+            ? z.string().min(1, `${field.label} is required`)
+            : z.string().optional().or(z.literal(''))
+          break
+
         default:
-          fieldSchema = z.string()
-          if (field.pattern) {
-            fieldSchema = fieldSchema.regex(new RegExp(field.pattern), 'Invalid format')
+          // Handle text, textarea and other string-based fields
+          if (field.required) {
+            let stringSchema: any = z.string().min(1, `${field.label} is required`)
+
+            // Apply validation rules
+            if (field.validationRule && field.validationRule !== 'none') {
+              stringSchema = stringSchema.refine(
+                (value: string) =>
+                  validateInput(
+                    value,
+                    field.validationRule as ValidationRuleType,
+                    field.customPattern,
+                    field.validationDomain
+                  ),
+                { message: getValidationErrorMessage(field.validationRule as ValidationRuleType) }
+              )
+            } else if (field.pattern) {
+              stringSchema = stringSchema.regex(new RegExp(field.pattern), 'Invalid format')
+            }
+
+            schemaObj[field.key] = stringSchema
+          } else {
+            let stringSchema: any = z.string().optional().or(z.literal(''))
+
+            // Apply validation rules only if value is not empty
+            if (field.validationRule && field.validationRule !== 'none') {
+              stringSchema = stringSchema.refine(
+                (value: string | undefined) => {
+                  if (!value) return true
+                  return validateInput(
+                    value,
+                    field.validationRule as ValidationRuleType,
+                    field.customPattern,
+                    field.validationDomain
+                  )
+                },
+                { message: getValidationErrorMessage(field.validationRule as ValidationRuleType) }
+              )
+            } else if (field.pattern) {
+              stringSchema = stringSchema.refine(
+                (value: string | undefined) => {
+                  if (!value) return true
+                  return new RegExp(field.pattern!).test(value)
+                },
+                { message: 'Invalid format' }
+              )
+            }
+
+            schemaObj[field.key] = stringSchema
           }
+          break
       }
-
-      if (field.required && field.type !== 'checkbox') {
-        fieldSchema = fieldSchema.min(1, `${field.label} is required`)
-      }
-
-      if (!field.required) {
-        fieldSchema = fieldSchema.optional()
-      }
-
-      schemaObj[field.key] = fieldSchema
     })
 
     return z.object(schemaObj)

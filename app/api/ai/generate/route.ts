@@ -37,51 +37,159 @@ async function getAISettings() {
 
 // Create a comprehensive prompt for AI form generation
 function createFormGenerationPrompt(userPrompt: string): string {
-  return `You are an expert form builder AI. Create a comprehensive, professional form configuration based on the user's request.
+  return `You are a professional form design expert with deep knowledge of user experience, conversion optimization, and business requirements. Analyze the user's request thoroughly and create a high-quality, context-aware form that precisely meets their needs.
 
-User Request: "${userPrompt}"
+## USER REQUEST
+"${userPrompt}"
 
-Generate a JSON response with the following structure:
+## CRITICAL REQUIREMENTS
+
+### 1. CONTEXT ANALYSIS FIRST
+Before generating the form, understand:
+- **Primary Purpose**: What is this form trying to accomplish?
+- **Target Audience**: Who will fill this out? (professionals, customers, general public, etc.)
+- **Business Context**: Is this for lead generation, service delivery, compliance, feedback, etc.?
+- **Data Sensitivity**: What level of information are we collecting?
+
+### 2. SMART COMPLETION MANDATE
+- **Auto-Generate ALL Fields**: Never leave fields empty or generic
+- **Industry-Specific Defaults**: Apply domain expertise (legal forms need different fields than restaurant feedback)
+- **Professional Copy**: Write clear, actionable labels and help text
+- **Intelligent Validation**: Add appropriate constraints, patterns, and requirements
+- **Complete Configuration**: Set proper file types, size limits, date ranges, number bounds
+
+### 3. QUALITY STANDARDS
+- **Crystal Clear Purpose**: Title and description must immediately convey the form's value
+- **Logical Flow**: Fields should follow natural user mental models
+- **Professional Language**: Use industry-appropriate terminology
+- **Accessibility**: Labels and help text that work for all users
+- **Conversion Optimized**: Minimize friction while collecting necessary data
+
+## REQUIRED JSON STRUCTURE
 {
-  "title": "Clear, professional form title",
-  "description": "Brief description of the form's purpose",
-  "refKey": "kebab-case-reference-key-max-30-chars",
+  "title": "Specific, benefit-focused title (not generic)",
+  "description": "Clear explanation of purpose, time to complete, and what happens after submission",
+  "refKey": "descriptive-kebab-case-key-max-30-chars",
   "fields": [
     {
-      "key": "unique_field_key",
-      "label": "User-friendly field label",
-      "type": "field_type",
-      "required": boolean,
-      "placeholder": "helpful placeholder text",
-      "helpText": "optional help text for complex fields",
-      "options": ["option1", "option2"], // only for select/radio/checkbox
-      "min": number, // for number/date fields
-      "max": number, // for number/date fields
-      "pattern": "regex_pattern", // for validation
-      "acceptedTypes": [".pdf", ".doc"], // for file fields
-      "maxFileSize": 5242880, // 5MB in bytes for file fields
-      "allowMultiple": false // for file fields
+      "key": "semantic_field_key",
+      "label": "Action-oriented field label",
+      "type": "most_appropriate_field_type",
+      "required": true_or_false_based_on_business_need,
+      "placeholder": "Specific, helpful example text",
+      "helpText": "Clear guidance when field might be confusing",
+      "options": ["Contextually relevant options"], // for select/radio/checkbox
+      "min": contextual_minimum, // for number/date fields
+      "max": contextual_maximum, // for number/date fields
+      // Enhanced validation system - use these instead of raw regex
+      "validationRule": "user_friendly_validation_rule", // e.g., "phone_number", "email_domain", "letters_only", "url", etc.
+      "customPattern": "custom_regex_if_using_custom_regex_rule", // only for validationRule: "custom_regex"
+      "validationDomain": "domain.com", // only for validationRule: "email_domain"
+      "pattern": "fallback_regex_for_backward_compatibility", // deprecated - use validationRule instead
+      "acceptedTypes": [".relevant", ".file", ".types"], // for file fields
+      "maxFileSize": reasonable_size_in_bytes, // for file fields
+      "allowMultiple": true_or_false_based_on_need // for file fields
     }
   ]
 }
 
-Available field types: text, textarea, email, number, select, radio, checkbox, date, file
+## CONTEXT-AWARE FIELD SUGGESTIONS
 
-Best Practices:
-1. Use semantic field keys (snake_case)
-2. Make essential fields required, optional ones not required
-3. Add helpful placeholders and help text
-4. For contact forms: include name, email, and message
-5. For registration: include name, email, phone
-6. For feedback: include rating options and comment fields
-7. For job applications: include resume upload with proper file types
-8. Use appropriate validation (email format, number ranges, etc.)
-9. Create logical field groupings and flow
-10. Keep forms concise but comprehensive
-11. Use select/radio for limited options, text for open responses
-12. Add file uploads when documents/attachments are needed
+### Contact/Lead Forms
+- Full name (first_name, last_name or full_name based on formality)
+- Professional email with email validation
+- Phone with proper format pattern
+- Company/organization if B2B
+- Specific inquiry type (select dropdown)
+- Detailed message with helpful placeholder
 
-Ensure the response is valid JSON only, no additional text.`
+### Registration/Application Forms
+- Required identification fields
+- Contact information with validation
+- Qualification questions (experience, location, availability)
+- Document uploads with specific file types
+- Agreement checkboxes where legally required
+
+### Feedback/Survey Forms
+- Rating scales (1-5 or 1-10 based on context)
+- Categorical selections for specific feedback areas
+- Open text for detailed feedback
+- Optional demographic fields
+- Recommendation likelihood (NPS)
+
+### E-commerce/Order Forms
+- Product selection with clear options
+- Quantity with reasonable min/max
+- Customer details with validation
+- Delivery/billing information
+- Special instructions
+- Terms acceptance
+
+### Event/Booking Forms
+- Event/service selection
+- Date/time preferences with appropriate constraints
+- Participant information
+- Special requirements/accommodations
+- Contact details for confirmation
+
+## INTELLIGENT DEFAULTS BY INDUSTRY
+
+### Professional Services
+- Formal language, comprehensive contact info
+- Business-focused field labels
+- Professional file types (.pdf, .docx)
+- Longer text areas for detailed requests
+
+### Retail/Consumer
+- Casual, friendly language
+- Simple, quick-to-complete fields
+- Image uploads for product issues
+- Rating systems for satisfaction
+
+### Healthcare/Legal
+- Compliance-focused language
+- Required consent fields
+- Secure file uploads
+- Detailed information collection
+
+### Education
+- Student/parent information
+- Academic-relevant options
+- Document submissions
+- Emergency contacts
+
+## VALIDATION & UX RULES
+1. **Text fields with validation**: Use validationRule instead of raw regex patterns:
+   - "letters_only" - Only letters (A-Z, a-z)
+   - "letters_numbers" - Letters and numbers only
+   - "letters_numbers_spaces" - Letters, numbers, and spaces
+   - "phone_number" - Phone number format
+   - "postal_code" - ZIP/postal code format
+   - "numbers_only" - Only numeric digits
+   - "url" - Website URL validation
+   - "email_domain" - Email from specific domain (set validationDomain)
+   - "no_special_chars" - Letters, numbers, spaces, hyphens, underscores
+   - "username" - Valid username format (3-20 chars)
+   - "custom_regex" - Custom pattern (set customPattern)
+   - "none" - No validation
+2. **Email fields**: Always use email type (no additional validation needed)
+3. **Phone fields**: Use text type with validationRule: "phone_number"
+4. **Date fields**: Set realistic min/max ranges
+5. **File uploads**: Specify relevant file types and reasonable size limits
+6. **Required fields**: Only mark as required if absolutely necessary for the form's purpose
+7. **Select options**: Provide 3-8 relevant choices, avoid overwhelming users
+8. **Text areas**: Set appropriate placeholder text showing expected length/format
+
+## FINAL CHECK
+Before responding, verify:
+- ✅ Every field has contextual, helpful content (no generic placeholders)
+- ✅ Form title directly relates to user's request
+- ✅ Field progression makes logical sense
+- ✅ Appropriate validation for all input types
+- ✅ Professional, clear language throughout
+- ✅ Complete technical configuration (file types, sizes, patterns)
+
+Generate only valid JSON. No additional text or formatting.`
 }
 
 // Call the AI API to generate form using OpenAI SDK
@@ -197,7 +305,11 @@ async function generateFormWithAI(prompt: string): Promise<AIFormResponse> {
           options: field.options || undefined,
           min: field.min || undefined,
           max: field.max || undefined,
+          // Enhanced validation system support
+          validationRule: field.validationRule || undefined,
           pattern: field.pattern || undefined,
+          customPattern: field.customPattern || undefined,
+          validationDomain: field.validationDomain || undefined,
           acceptedTypes: field.acceptedTypes || undefined,
           maxFileSize: field.maxFileSize || undefined,
           allowMultiple: field.allowMultiple || undefined,

@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ERROR_MESSAGES, HTTP_STATUS } from '@/lib/constants'
 import { logger } from '@/lib/logger'
 import { supabase } from '@/lib/supabase'
+import {
+  validateInput,
+  getValidationErrorMessage,
+  type ValidationRuleType,
+} from '@/lib/validation-rules'
 
 function errorResponse(message: string, code: number = HTTP_STATUS.BAD_REQUEST) {
   return NextResponse.json(
@@ -145,6 +150,83 @@ async function handlePost(req: NextRequest) {
         logger.error('Failed to parse form fields:', e)
         formFields = []
       }
+    }
+
+    // Server-side validation of submitted values against form field rules
+    const validationErrors: string[] = []
+
+    for (const field of formFields) {
+      const value = body.values[field.key]
+
+      // Check required fields
+      if (field.required && (!value || (typeof value === 'string' && value.trim() === ''))) {
+        validationErrors.push(`${field.label || field.key} is required`)
+        continue
+      }
+
+      // Skip validation for empty optional fields
+      if (!value || (typeof value === 'string' && value.trim() === '')) {
+        continue
+      }
+
+      // Validate based on field type and validation rules
+      const stringValue = String(value)
+
+      // Enhanced validation system - check validationRule first, then pattern
+      if (field.validationRule && field.validationRule !== 'none') {
+        const isValid = validateInput(
+          stringValue,
+          field.validationRule as ValidationRuleType,
+          field.customPattern,
+          field.validationDomain
+        )
+
+        if (!isValid) {
+          const errorMessage = getValidationErrorMessage(field.validationRule as ValidationRuleType)
+          validationErrors.push(`${field.label || field.key}: ${errorMessage}`)
+        }
+      } else if (field.pattern) {
+        // Fallback to legacy pattern validation
+        try {
+          const regex = new RegExp(field.pattern)
+          if (!regex.test(stringValue)) {
+            validationErrors.push(`${field.label || field.key}: Invalid format`)
+          }
+        } catch (e) {
+          logger.warn(`Invalid regex pattern for field ${field.key}: ${field.pattern}`)
+        }
+      }
+
+      // Type-specific validation
+      if (field.type === 'email' && stringValue) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(stringValue)) {
+          validationErrors.push(`${field.label || field.key}: Invalid email address`)
+        }
+      }
+
+      if (field.type === 'number') {
+        const numValue = Number(value)
+        if (isNaN(numValue)) {
+          validationErrors.push(`${field.label || field.key}: Must be a valid number`)
+        } else {
+          if (field.min !== undefined && numValue < field.min) {
+            validationErrors.push(`${field.label || field.key}: Must be at least ${field.min}`)
+          }
+          if (field.max !== undefined && numValue > field.max) {
+            validationErrors.push(`${field.label || field.key}: Must be at most ${field.max}`)
+          }
+        }
+      }
+    }
+
+    // Return validation errors if any
+    if (validationErrors.length > 0) {
+      logger.warn('Form validation failed:', { refKey: body.refKey, errors: validationErrors })
+      return errorResponse(
+        `Validation failed: ${validationErrors.join(', ')}`,
+        HTTP_STATUS.BAD_REQUEST
+      )
     }
 
     // Get IP and User Agent

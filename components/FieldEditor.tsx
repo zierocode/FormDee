@@ -7,7 +7,17 @@ import Select from 'antd/es/select'
 import Switch from 'antd/es/switch'
 import { useForm, Controller, useWatch } from 'react-hook-form'
 import { FormField, FieldType } from '@/lib/types'
-import { fieldEditorSchema, type FieldEditorData } from '@/schemas/fieldSchema'
+import {
+  VALIDATION_RULES,
+  getValidationRulesByCategory,
+  getPatternForRule,
+  type ValidationRuleType,
+} from '@/lib/validation-rules'
+import {
+  fieldEditorSchema,
+  type FieldEditorData,
+  type FieldEditorParsedData,
+} from '@/schemas/fieldSchema'
 
 const { TextArea } = Input
 
@@ -50,7 +60,11 @@ export const FieldEditor = memo(function FieldEditor({
       options: value?.options?.join('\n') ?? '',
       min: value?.min?.toString() ?? '',
       max: value?.max?.toString() ?? '',
+      // Enhanced validation system
+      validationRule: value?.validationRule ?? 'none',
       pattern: value?.pattern ?? '',
+      customPattern: value?.customPattern ?? '',
+      validationDomain: value?.validationDomain ?? '',
       acceptedTypes:
         value?.acceptedTypes?.map((t) => (t.startsWith('.') ? t.substring(1) : t)).join(', ') ?? '',
       maxFileSize: value?.maxFileSize
@@ -69,11 +83,68 @@ export const FieldEditor = memo(function FieldEditor({
     watch,
   } = form
   const watchedType = useWatch({ control, name: 'type' })
+  const watchValidationRule = useWatch({ control, name: 'validationRule' })
 
   const needsOptions = ['select', 'radio', 'checkbox'].includes(watchedType)
   const isNumberField = watchedType === 'number'
   const isTextField = watchedType === 'text'
   const isFileField = watchedType === 'file'
+
+  // Transform FieldEditorData to FormField format with validation processing
+  const transformToFormField = (data: FieldEditorParsedData): FormField => {
+    // Generate the pattern based on the validation rule
+    const generatedPattern = getPatternForRule(
+      data.validationRule as ValidationRuleType,
+      data.customPattern,
+      data.validationDomain
+    )
+
+    return {
+      key: data.key,
+      label: data.label,
+      type: data.type,
+      required: data.required ?? false,
+      placeholder: data.placeholder,
+      helpText: data.helpText,
+      options: data.options && data.options.length > 0 ? data.options : undefined,
+      min: typeof data.min === 'number' ? data.min : undefined,
+      max: typeof data.max === 'number' ? data.max : undefined,
+      // Enhanced validation system
+      validationRule: data.validationRule || 'none',
+      pattern: generatedPattern, // Generated from validation rule
+      customPattern: data.customPattern,
+      validationDomain: data.validationDomain,
+      acceptedTypes:
+        data.acceptedTypes && data.acceptedTypes.length > 0 ? data.acceptedTypes : undefined,
+      maxFileSize: typeof data.maxFileSize === 'number' ? data.maxFileSize : undefined,
+      allowMultiple: data.allowMultiple,
+    }
+  }
+
+  // Auto-save field changes when form data changes (debounced)
+  useEffect(() => {
+    const subscription = watch((formData) => {
+      // Debounce auto-save to avoid excessive calls
+      const timeoutId = setTimeout(() => {
+        try {
+          // Only save if form is valid
+          const validatedData = fieldEditorSchema.parse(formData)
+          const transformedField = transformToFormField(validatedData)
+
+          // Only save if field has actually changed
+          if (JSON.stringify(transformedField) !== JSON.stringify(value)) {
+            _onSave(transformedField)
+          }
+        } catch (error) {
+          // Don't save if validation fails
+          // Validation error during auto-save - field will not be saved
+        }
+      }, 300) // 300ms debounce
+
+      return () => clearTimeout(timeoutId)
+    })
+    return () => subscription.unsubscribe()
+  }, [watch, _onSave, value])
 
   // Clear irrelevant fields when type changes
   useEffect(() => {
@@ -189,17 +260,135 @@ export const FieldEditor = memo(function FieldEditor({
           )}
         />
 
-        {/* Pattern field for text type */}
+        {/* Enhanced Validation System for text type */}
         {isTextField && (
-          <Controller
-            control={control}
-            name="pattern"
-            render={({ field }) => (
-              <Form.Item label="Pattern (regex)">
-                <Input {...field} placeholder="optional" />
-              </Form.Item>
+          <>
+            <Controller
+              control={control}
+              name="validationRule"
+              render={({ field }) => {
+                const categories = getValidationRulesByCategory()
+                const currentRule = field.value as ValidationRuleType
+
+                return (
+                  <Form.Item label="Input Validation" help="Choose how to validate user input">
+                    <Select
+                      {...field}
+                      placeholder="Select validation rule"
+                      style={{ width: '100%' }}
+                    >
+                      <Select.OptGroup label="Text Validation">
+                        {categories.text.map((rule) => (
+                          <Select.Option key={rule.type} value={rule.type}>
+                            {rule.label}
+                            {rule.example && (
+                              <span style={{ color: '#666' }}> - {rule.example}</span>
+                            )}
+                          </Select.Option>
+                        ))}
+                      </Select.OptGroup>
+
+                      <Select.OptGroup label="Contact Information">
+                        {categories.contact.map((rule) => (
+                          <Select.Option key={rule.type} value={rule.type}>
+                            {rule.label}
+                            {rule.example && (
+                              <span style={{ color: '#666' }}> - {rule.example}</span>
+                            )}
+                          </Select.Option>
+                        ))}
+                      </Select.OptGroup>
+
+                      <Select.OptGroup label="Numeric">
+                        {categories.numeric.map((rule) => (
+                          <Select.Option key={rule.type} value={rule.type}>
+                            {rule.label}
+                            {rule.example && (
+                              <span style={{ color: '#666' }}> - {rule.example}</span>
+                            )}
+                          </Select.Option>
+                        ))}
+                      </Select.OptGroup>
+
+                      <Select.OptGroup label="Web & URLs">
+                        {categories.web.map((rule) => (
+                          <Select.Option key={rule.type} value={rule.type}>
+                            {rule.label}
+                            {rule.example && (
+                              <span style={{ color: '#666' }}> - {rule.example}</span>
+                            )}
+                          </Select.Option>
+                        ))}
+                      </Select.OptGroup>
+
+                      <Select.OptGroup label="Advanced">
+                        {categories.custom.map((rule) => (
+                          <Select.Option key={rule.type} value={rule.type}>
+                            {rule.label}
+                          </Select.Option>
+                        ))}
+                      </Select.OptGroup>
+                    </Select>
+
+                    {currentRule && currentRule !== 'none' && VALIDATION_RULES[currentRule] && (
+                      <div
+                        style={{
+                          marginTop: 8,
+                          padding: 8,
+                          background: '#f8f9fa',
+                          borderRadius: 4,
+                          fontSize: 12,
+                          color: '#666',
+                        }}
+                      >
+                        <strong>Rule:</strong> {VALIDATION_RULES[currentRule].description}
+                        {VALIDATION_RULES[currentRule].example && (
+                          <>
+                            <br />
+                            <strong>Example:</strong> {VALIDATION_RULES[currentRule].example}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </Form.Item>
+                )
+              }}
+            />
+
+            {/* Email domain field for email domain restriction */}
+            {watchValidationRule === 'email_domain' && (
+              <Controller
+                control={control}
+                name="validationDomain"
+                render={({ field }) => (
+                  <Form.Item
+                    label="Allowed Domain"
+                    help="Enter the domain name (e.g., company.com)"
+                    required
+                  >
+                    <Input {...field} placeholder="company.com" />
+                  </Form.Item>
+                )}
+              />
             )}
-          />
+
+            {/* Custom regex field for custom validation */}
+            {watchValidationRule === 'custom_regex' && (
+              <Controller
+                control={control}
+                name="customPattern"
+                render={({ field }) => (
+                  <Form.Item
+                    label="Custom Pattern (Regex)"
+                    help="Enter a regular expression pattern"
+                    required
+                  >
+                    <Input {...field} placeholder="^[A-Z][a-z]+$" />
+                  </Form.Item>
+                )}
+              />
+            )}
+          </>
         )}
 
         {/* Options field for select/radio/checkbox */}

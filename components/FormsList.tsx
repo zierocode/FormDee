@@ -231,7 +231,22 @@ export function FormsList() {
       // Find the form in the cached data
       const formData = allItems?.find((form) => form.refKey === refKey)
       if (formData) {
-        sessionStorage.setItem(`duplicate_${refKey}`, JSON.stringify(formData))
+        // Create a clean copy of form data for duplication, excluding validation-sensitive fields
+        // and ensuring all new validation fields are properly copied
+        const duplicateData = {
+          ...formData,
+          // Preserve all form fields including new validation properties
+          fields:
+            formData.fields?.map((field) => ({
+              ...field,
+              // Ensure all validation fields are preserved
+              validationRule: field.validationRule,
+              pattern: field.pattern,
+              customPattern: field.customPattern,
+              validationDomain: field.validationDomain,
+            })) || [],
+        }
+        sessionStorage.setItem(`duplicate_${refKey}`, JSON.stringify(duplicateData))
         window.location.href = `/builder?duplicate=${encodeURIComponent(refKey)}`
       } else {
         notification.error({

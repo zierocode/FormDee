@@ -75,7 +75,10 @@ function LoginForm() {
           description: 'Welcome back! You have been logged in successfully.',
           placement: 'bottomRight',
         })
-        router.push(returnUrl)
+
+        // Clean returnUrl to remove any existing query parameters that might cause redirect loops
+        const cleanReturnUrl = returnUrl.split('?')[0].split('&')[0] || '/builder'
+        router.push(cleanReturnUrl)
         router.refresh()
       } else {
         notification.error({

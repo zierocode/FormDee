@@ -67,22 +67,59 @@ export async function POST(req: NextRequest) {
         messages: [
           {
             role: 'system',
-            content: `You are a form builder assistant. Generate form fields based on the user's description.
+            content: `You are a professional form design expert. Analyze the user's request and create a context-aware, high-quality form.
+
+CRITICAL REQUIREMENTS:
+1. UNDERSTAND CONTEXT: Determine the form's purpose, audience, and business context
+2. SMART COMPLETION: Auto-generate ALL field details - never leave generic placeholders
+3. PROFESSIONAL QUALITY: Use clear, actionable language and appropriate validation
+
 Return a JSON object with this structure:
 {
-  "title": "Form title",
-  "description": "Form description",
+  "title": "Specific, benefit-focused title",
+  "description": "Clear purpose and what happens after submission",
   "fields": [
     {
-      "name": "field_name",
-      "label": "Field Label",
+      "name": "semantic_field_name",
+      "label": "Action-oriented field label",
       "type": "text|email|number|date|textarea|select|radio|checkbox|file",
-      "required": true|false,
-      "placeholder": "optional placeholder",
-      "options": ["option1", "option2"] // for select/radio/checkbox only
+      "required": true_or_false_based_on_business_need,
+      "placeholder": "Specific, helpful example text",
+      "options": ["Contextually relevant options"], // for select/radio/checkbox
+      // Enhanced validation system - use these instead of raw regex
+      "validationRule": "user_friendly_validation_rule", // e.g., "phone_number", "email_domain", "letters_only", "url", etc.
+      "customPattern": "custom_regex_if_using_custom_regex_rule", // only for validationRule: "custom_regex"
+      "validationDomain": "domain.com", // only for validationRule: "email_domain"
+      "pattern": "fallback_regex_for_backward_compatibility", // deprecated - use validationRule instead
+      "min": contextual_minimum, // for number/date fields
+      "max": contextual_maximum, // for number/date fields
+      "acceptedTypes": [".relevant", ".file", ".types"], // for file fields
+      "maxFileSize": 5242880 // reasonable size in bytes for files
     }
   ]
-}`,
+}
+
+VALIDATION RULES:
+1. **Text fields with validation**: Use validationRule instead of raw regex patterns:
+   - "letters_only" - Only letters (A-Z, a-z)
+   - "letters_numbers" - Letters and numbers only
+   - "letters_numbers_spaces" - Letters, numbers, and spaces
+   - "phone_number" - Phone number format
+   - "postal_code" - ZIP/postal code format
+   - "numbers_only" - Only numeric digits
+   - "url" - Website URL validation
+   - "email_domain" - Email from specific domain (set validationDomain)
+   - "no_special_chars" - Letters, numbers, spaces, hyphens, underscores
+   - "username" - Valid username format (3-20 chars)
+   - "custom_regex" - Custom pattern (set customPattern)
+   - "none" - No validation
+2. **Email fields**: Use email type (no additional validation needed)
+3. **Phone fields**: Use text type with validationRule: "phone_number"
+4. **File uploads**: Set relevant file types and size limits
+5. **Required fields**: Only if absolutely necessary
+6. **Select options**: Provide 3-8 relevant choices
+
+Generate complete, professional forms with contextual field details.`,
           },
           {
             role: 'user',
@@ -103,6 +140,30 @@ Return a JSON object with this structure:
 
     const data = await response.json()
     const generatedContent = JSON.parse(data.choices[0].message.content)
+
+    // Transform field format from AI response (name) to UI format (key)
+    if (generatedContent.fields && Array.isArray(generatedContent.fields)) {
+      generatedContent.fields = generatedContent.fields.map((field: any) => ({
+        ...field,
+        key: field.name || field.key, // Map 'name' to 'key' for UI compatibility
+        label: field.label,
+        type: field.type,
+        required: field.required || false,
+        placeholder: field.placeholder || '',
+        helpText: field.helpText || '',
+        options: field.options,
+        // Enhanced validation system support
+        validationRule: field.validationRule,
+        pattern: field.pattern,
+        customPattern: field.customPattern,
+        validationDomain: field.validationDomain,
+        min: field.min,
+        max: field.max,
+        acceptedTypes: field.acceptedTypes,
+        maxFileSize: field.maxFileSize,
+        allowMultiple: field.allowMultiple,
+      }))
+    }
 
     logger.info('[UI API] AI form generation successful', {
       fieldsCount: generatedContent.fields?.length || 0,

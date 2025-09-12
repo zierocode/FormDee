@@ -19,7 +19,11 @@ export type FormField = {
   options?: string[] // for select/radio/checkbox
   min?: number // for number/date
   max?: number // for number/date
-  pattern?: string // regex (string)
+  // Enhanced validation system
+  validationRule?: string // User-friendly validation rule type
+  pattern?: string // Generated regex pattern (for backward compatibility)
+  customPattern?: string // Custom regex when using 'custom_regex' rule
+  validationDomain?: string // For email domain restriction
   // File upload specific options
   acceptedTypes?: string[] // e.g., ['.pdf', '.jpg', '.png']
   maxFileSize?: number // in bytes
