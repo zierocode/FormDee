@@ -7,7 +7,13 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
 
 // This function is for UI login only - validates against Supabase Auth
 export async function validateAdminKey(key: string): Promise<boolean> {
-  // Validate the key using Supabase Auth system
+  // First try simple env validation for local development
+  const ADMIN_UI_KEY = process.env.ADMIN_UI_KEY
+  if (ADMIN_UI_KEY && key === ADMIN_UI_KEY) {
+    return true
+  }
+
+  // Fallback to Supabase Auth system
   const validation = await validateSupabaseKey(key, 'ui')
   return validation.isValid
 }
@@ -21,7 +27,13 @@ export async function verifyApiKey(
     return { authorized: false, error: 'API key required' }
   }
 
-  // Validate as API key using Supabase Auth
+  // First try simple env validation for local development
+  const ADMIN_API_KEY = process.env.ADMIN_API_KEY
+  if (ADMIN_API_KEY && adminKey === ADMIN_API_KEY) {
+    return { authorized: true }
+  }
+
+  // Fallback to Supabase Auth system
   const validation = await validateSupabaseKey(adminKey, 'api')
 
   if (!validation.isValid) {
@@ -56,7 +68,13 @@ export async function isAuthenticated(): Promise<boolean> {
   const key = await getAdminKeyCookie()
   if (!key) return false
 
-  // Validate UI key from cookie using Supabase Auth
+  // First try simple env validation for local development
+  const ADMIN_UI_KEY = process.env.ADMIN_UI_KEY
+  if (ADMIN_UI_KEY && key === ADMIN_UI_KEY) {
+    return true
+  }
+
+  // Fallback to Supabase Auth system
   const validation = await validateSupabaseKey(key, 'ui')
   return validation.isValid
 }

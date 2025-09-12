@@ -4,6 +4,7 @@ import { AntdRegistry } from '@ant-design/nextjs-registry'
 import { ConfigProvider } from 'antd'
 import type { Metadata } from 'next'
 import localFont from 'next/font/local'
+import { AuthProvider } from '@/components/AuthProvider'
 import { ConditionalHeader } from '@/components/ConditionalHeader'
 import { ConditionalMain } from '@/components/ConditionalMain'
 import { QueryProvider } from '@/components/QueryProvider'
@@ -86,8 +87,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <QueryProvider>
           <AntdRegistry>
             <ConfigProvider theme={theme}>
-              <ConditionalHeader />
-              <ConditionalMain>{children}</ConditionalMain>
+              <AuthProvider>
+                <ConditionalHeader />
+                <ConditionalMain>{children}</ConditionalMain>
+              </AuthProvider>
             </ConfigProvider>
           </AntdRegistry>
         </QueryProvider>

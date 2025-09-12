@@ -152,7 +152,8 @@ function LoginForm() {
               alt="FormDee Logo"
               width={80}
               height={80}
-              style={{ marginBottom: 12 }}
+              priority
+              style={{ marginBottom: 12, width: 80, height: 80 }}
             />
             <Title level={2} style={{ margin: '0 0 2px 0', fontSize: 28 }}>
               FormDee

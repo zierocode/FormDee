@@ -4,6 +4,7 @@ import { MenuOutlined } from '@ant-design/icons'
 import { Layout, Button, notification } from 'antd'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
+import { useAuth } from './AuthProvider'
 import { SettingsDrawer } from './SettingsDrawer'
 
 const { Header } = Layout
@@ -11,37 +12,20 @@ const { Header } = Layout
 export function ConditionalHeader() {
   const pathname = usePathname()
   const router = useRouter()
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const { isAuthenticated, adminKey } = useAuth()
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [adminKey, setAdminKey] = useState<string>('')
-
-  useEffect(() => {
-    // Check authentication status and get admin key
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/auth/check')
-        if (response.ok) {
-          const data = await response.json()
-          setIsAuthenticated(true)
-          if (data.adminKey) {
-            setAdminKey(data.adminKey)
-          }
-        } else {
-          setIsAuthenticated(false)
-          setAdminKey('')
-          setSettingsOpen(false) // Close drawer when not authenticated
-        }
-      } catch (error) {
-        setIsAuthenticated(false)
-        setAdminKey('')
-        setSettingsOpen(false) // Close drawer on error
-      }
-    }
-    checkAuth()
-  }, [pathname])
 
   // Hide header on form pages (routes starting with /f/), home page, and login page
-  if (pathname?.startsWith('/f/') || pathname === '/' || pathname === '/login') {
+  const shouldHideHeader = pathname?.startsWith('/f/') || pathname === '/' || pathname === '/login'
+
+  useEffect(() => {
+    // Close settings drawer when not authenticated
+    if (!isAuthenticated) {
+      setSettingsOpen(false)
+    }
+  }, [isAuthenticated])
+
+  if (shouldHideHeader) {
     return null
   }
 

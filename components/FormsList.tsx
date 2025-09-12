@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useRef } from 'react'
 import {
   EditOutlined,
   CopyOutlined,
@@ -132,9 +132,7 @@ export function FormsList() {
   // TanStack Query hooks
   const { data: allItems = [], isLoading: loading, error: queryError, refetch } = useForms()
 
-  const [displayedItems, setDisplayedItems] = useState<
-    { refKey: string; title: string; description?: string; updatedAt?: string | null }[]
-  >([])
+  // Removed displayedItems state - will calculate directly instead
   const [copiedRefKey, setCopiedRefKey] = useState<string | null>(null)
   const [loadingEdit, setLoadingEdit] = useState<string | null>(null)
   const [loadingDuplicate, setLoadingDuplicate] = useState<string | null>(null)
@@ -142,6 +140,7 @@ export function FormsList() {
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const isLoadingMoreRef = useRef(false)
   const ITEMS_PER_PAGE = 5
 
   // Transform error for display
@@ -172,23 +171,27 @@ export function FormsList() {
     [formattedItems, searchQuery]
   )
 
-  // Paginate filtered items
-  useEffect(() => {
+  // Calculate displayed items directly (no state needed)
+  const displayedItems = useMemo(() => {
     const startIndex = 0
     const endIndex = currentPage * ITEMS_PER_PAGE
-    setDisplayedItems(filteredItems.slice(startIndex, endIndex))
+    return filteredItems.slice(startIndex, endIndex)
   }, [filteredItems, currentPage])
 
-  // Load more items for infinite scroll
-  const loadMore = useCallback(() => {
-    if (isLoadingMore || displayedItems.length >= filteredItems.length) return
+  // Load more items
+  const hasMore = displayedItems.length < filteredItems.length
 
+  const loadMore = useCallback(() => {
+    if (isLoadingMoreRef.current) return
+
+    isLoadingMoreRef.current = true
     setIsLoadingMore(true)
     setTimeout(() => {
       setCurrentPage((prev) => prev + 1)
       setIsLoadingMore(false)
+      isLoadingMoreRef.current = false
     }, 500)
-  }, [isLoadingMore, displayedItems.length, filteredItems.length])
+  }, [])
 
   // Handle search input
   const handleSearch = (value: string) => {
@@ -290,20 +293,8 @@ export function FormsList() {
     }
   }
 
-  // Infinite scroll detection
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop !==
-        document.documentElement.offsetHeight
-      )
-        return
-      loadMore()
-    }
-
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [displayedItems.length, filteredItems.length, isLoadingMore, loadMore])
+  // Removed infinite scroll to prevent infinite loop issues
+  // Users can click "Load More" button to load additional items
 
   if (loading) {
     return (
@@ -456,9 +447,9 @@ export function FormsList() {
               >
                 <List.Item.Meta
                   title={
-                    <Title level={4} style={{ margin: 0, fontSize: '18px' }}>
+                    <Text strong style={{ fontSize: '18px' }}>
                       {item.title}
-                    </Title>
+                    </Text>
                   }
                   description={
                     <Space direction="vertical" size="small" style={{ width: '100%' }}>
@@ -487,7 +478,7 @@ export function FormsList() {
 
       {displayedItems.length < filteredItems.length && (
         <div style={{ textAlign: 'center', marginTop: 16 }}>
-          <Button onClick={loadMore} loading={isLoadingMore}>
+          <Button onClick={loadMore} loading={isLoadingMore} disabled={!hasMore || isLoadingMore}>
             Load More
           </Button>
         </div>

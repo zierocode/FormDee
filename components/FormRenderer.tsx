@@ -301,7 +301,7 @@ export function FormRenderer({ refKey }: { refKey: string }) {
                   alt="FormDee Logo"
                   width={72}
                   height={72}
-                  style={{ marginBottom: 10 }}
+                  style={{ marginBottom: 10, width: 72, height: 72 }}
                 />
                 <Title level={2} style={{ margin: '0 0 2px 0', fontSize: 26 }}>
                   FormDee

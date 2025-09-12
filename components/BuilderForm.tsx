@@ -80,7 +80,8 @@ export function BuilderForm({
   )
 
   // TanStack Query hooks
-  const { data: formsData } = useForms()
+  // Only fetch all forms when in create mode (for duplicate and refKey validation)
+  const { data: formsData } = useForms({ enabled: mode === 'create' })
   const { data: responseStats } = useResponseStats(refKeyHint || initial?.refKey || '')
   const upsertFormMutation = useUpsertForm({ showNotifications: false })
 
@@ -122,13 +123,24 @@ export function BuilderForm({
   }, [saveButtonContainer])
 
   // Check Google authentication status
+  // Memoize the refKey to avoid unnecessary re-checks
+  const effectiveRefKey = mode === 'edit' ? initial?.refKey : watchedValues.refKey
+
   useEffect(() => {
+    // Skip if no refKey, but still set loading to false for duplicate mode
+    if (!effectiveRefKey) {
+      // For duplicate mode or new form, we still need to set loading to false
+      setGoogleAuthStatus({
+        authenticated: false,
+        user: null,
+        loading: false,
+      })
+      return
+    }
+
     const checkGoogleAuth = async () => {
       try {
-        const currentRefKey = mode === 'edit' ? initial?.refKey : watchedValues.refKey
-        if (!currentRefKey) return
-
-        const response = await fetch(`/api/auth/google/status?refKey=${currentRefKey}`, {
+        const response = await fetch(`/api/auth/google/status?refKey=${effectiveRefKey}`, {
           credentials: 'include',
         })
         const data = await response.json()
@@ -179,7 +191,7 @@ export function BuilderForm({
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname)
     }
-  }, [notificationApi, mode, initial?.refKey, watchedValues.refKey])
+  }, [notificationApi, effectiveRefKey])
 
   // Capture initial field structure and Google Sheet URL for change detection
   useEffect(() => {
@@ -350,12 +362,12 @@ export function BuilderForm({
           description: sourceForm.description || '',
           refKey: '',
           slackWebhookUrl: sourceForm.slackWebhookUrl || '',
-          googleSheetUrl: sourceForm.googleSheetUrl || '',
+          googleSheetUrl: '', // Don't duplicate Google Sheet URL
           fields: sourceForm.fields || [],
         })
         setFields(sourceForm.fields || [])
         setSlackEnabled(sourceForm.slackEnabled ?? false)
-        setGoogleSheetEnabled(!!sourceForm.googleSheetEnabled)
+        setGoogleSheetEnabled(false) // Don't duplicate Google Sheet settings
       }
       setLoadingInitial(false)
       setHasInitialized(true) // Mark as initialized
@@ -719,8 +731,7 @@ export function BuilderForm({
   // Handle Google authentication with popup
   const handleGoogleAuth = async () => {
     try {
-      const currentRefKey = mode === 'edit' ? initial?.refKey : watchedValues.refKey
-      if (!currentRefKey) {
+      if (!effectiveRefKey) {
         notificationApi.error({
           message: 'Error',
           description: 'Please save the form first before setting up Google authentication',
@@ -728,7 +739,7 @@ export function BuilderForm({
         return
       }
 
-      const response = await fetch(`/api/auth/google?popup=true&refKey=${currentRefKey}`, {
+      const response = await fetch(`/api/auth/google?popup=true&refKey=${effectiveRefKey}`, {
         credentials: 'include',
       })
       const data = await response.json()
@@ -754,7 +765,7 @@ export function BuilderForm({
         // Function to refresh auth status
         const refreshAuthStatus = async () => {
           try {
-            const response = await fetch(`/api/auth/google/status?refKey=${currentRefKey}`, {
+            const response = await fetch(`/api/auth/google/status?refKey=${effectiveRefKey}`, {
               credentials: 'include',
             })
             const data = await response.json()
@@ -771,13 +782,19 @@ export function BuilderForm({
           }
         }
 
+        // Setup timeout ref for cleanup
+        // eslint-disable-next-line prefer-const
+        let cleanupTimeout: NodeJS.Timeout
+
         // Listen for messages from popup
         const handleMessage = (event: MessageEvent) => {
           if (event.origin !== window.location.origin) return
 
           if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
-            popup?.close()
+            // Don't try to close popup - it will close itself or user will close it
+            // This avoids COOP errors
             window.removeEventListener('message', handleMessage)
+            clearTimeout(cleanupTimeout)
 
             notificationApi.success({
               message: 'Success',
@@ -787,30 +804,41 @@ export function BuilderForm({
             // Refresh auth status from server
             refreshAuthStatus()
           } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
-            popup?.close()
+            // Don't try to close popup - it will close itself or user will close it
+            // This avoids COOP errors
             window.removeEventListener('message', handleMessage)
+            clearTimeout(cleanupTimeout)
 
             notificationApi.error({
               message: 'Authentication Failed',
               description: 'Google authentication failed. Please try again.',
             })
+          } else if (event.data.type === 'GOOGLE_AUTH_CLOSED') {
+            // User closed the popup window
+            window.removeEventListener('message', handleMessage)
+            clearTimeout(cleanupTimeout)
+
+            // Refresh auth status in case something changed
+            setTimeout(() => {
+              refreshAuthStatus()
+            }, 500)
           }
         }
 
         window.addEventListener('message', handleMessage)
 
-        // Handle popup being closed manually
-        const checkClosed = setInterval(() => {
-          if (popup?.closed) {
-            clearInterval(checkClosed)
+        // Clean up after 5 minutes if nothing happens
+        cleanupTimeout = setTimeout(
+          () => {
             window.removeEventListener('message', handleMessage)
+            // Refresh auth status one more time
+            refreshAuthStatus()
+          },
+          5 * 60 * 1000
+        )
 
-            // Refresh auth status when popup is closed (in case auth was successful but message wasn't received)
-            setTimeout(() => {
-              refreshAuthStatus()
-            }, 500)
-          }
-        }, 1000)
+        // Don't try to check popup.closed due to COOP restrictions
+        // The popup will communicate via postMessage when done
       } else {
         notificationApi.error({
           message: 'Authentication Error',

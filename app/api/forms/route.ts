@@ -37,7 +37,7 @@ async function handleGet(req: NextRequest) {
       return NextResponse.json({ ok: true, data })
     }
 
-    // Admin endpoints - validate authentication
+    // Admin endpoints - validate authentication (allow both UI and API keys)
     const auth = await withApiAuth(req, 'any')
 
     if (!auth.authenticated) {

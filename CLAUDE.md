@@ -1,8 +1,17 @@
-# FormDee - Dynamic Form Builder v1.3.0
+# FormDee - Dynamic Form Builder v1.3.1
 
 ## 🚀 Production Status - Complete & Deployed
 
 This project is **production-ready** and **feature-complete** with enhanced AI-powered form generation, Google Sheets integration, comprehensive testing and deployment tools. All major features implemented:
+
+### ✅ Latest Improvements (v1.3.1)
+
+- ✅ **Fixed COOP Errors** - Resolved Cross-Origin-Opener-Policy errors in Google Auth popup handling
+- ✅ **Eliminated Duplicate API Requests** - Fixed duplicate requests in responses page (React StrictMode handled)
+- ✅ **Fixed Form Duplication** - Resolved infinite spinning issue when duplicating forms with Google Sheets
+- ✅ **Smart Form Duplication** - Google Sheet settings are now properly excluded when duplicating forms
+- ✅ **Production Build Optimization** - All linting and type checking issues resolved
+- ✅ **Environment Configuration** - Proper `.env.production` setup with all required variables
 
 ### ✅ Core Features Complete (v1.1)
 

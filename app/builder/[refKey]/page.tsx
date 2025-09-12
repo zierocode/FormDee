@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { ArrowLeftOutlined, EditOutlined } from '@ant-design/icons'
 import Button from 'antd/es/button'
 import Card from 'antd/es/card'
@@ -9,36 +8,12 @@ import Typography from 'antd/es/typography'
 import { useRouter } from 'next/navigation'
 import { AdminKeyGate } from '@/components/AdminKeyGate'
 import { BuilderForm } from '@/components/BuilderForm'
-import { FormConfig } from '@/lib/types'
+import { useForm } from '@/hooks/use-forms'
 
 const { Title } = Typography
 const { Content } = Layout
 
 export const dynamic = 'force-dynamic'
-
-async function getForm(refKey: string) {
-  try {
-    const res = await fetch(`/api/forms?refKey=${encodeURIComponent(refKey)}`, {
-      cache: 'no-store',
-    })
-    const result = (await res.json()) as { ok: boolean; data?: FormConfig | FormConfig[] }
-
-    // Handle the case where the API returns an array instead of a single object
-    if (result.ok && result.data) {
-      if (Array.isArray(result.data)) {
-        // If data is an array, take the first item (should be the matching form)
-        const formData = result.data.find((form) => form.refKey === refKey) || result.data[0]
-        return { ok: true, data: formData }
-      }
-      // If data is already a single object, return as is
-      return { ok: true, data: result.data }
-    }
-
-    return { ok: false }
-  } catch {
-    return { ok: false } as any
-  }
-}
 
 function BackButton() {
   const router = useRouter()
@@ -51,13 +26,9 @@ function BackButton() {
 }
 
 export default function EditFormPage({ params }: { params: { refKey: string } }) {
-  const [formData, setFormData] = useState<{ ok: boolean; data?: FormConfig } | null>(null)
+  const { data: formData, isLoading } = useForm(params.refKey)
 
-  useEffect(() => {
-    getForm(params.refKey).then(setFormData)
-  }, [params.refKey])
-
-  if (!formData) {
+  if (isLoading) {
     return (
       <AdminKeyGate>
         <Layout style={{ minHeight: '100vh' }}>
@@ -118,7 +89,7 @@ export default function EditFormPage({ params }: { params: { refKey: string } })
                 <BuilderForm
                   mode="edit"
                   refKeyHint={params.refKey}
-                  initial={formData.ok ? formData.data : undefined}
+                  initial={formData}
                   saveButtonContainer="#save-form-button-container"
                 />
               </div>

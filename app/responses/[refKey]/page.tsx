@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import {
   DownloadOutlined,
   ReloadOutlined,
@@ -70,6 +70,7 @@ function ResponsesViewer() {
 
   const [responses, setResponses] = useState<Response[]>([])
   const [form, setForm] = useState<Form | null>(null)
+  const [hasInitialized, setHasInitialized] = useState(false)
   const [loading, setLoading] = useState(true)
   const [tableLoading, setTableLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -79,24 +80,36 @@ function ResponsesViewer() {
   const [hasMore, setHasMore] = useState(true)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
   const [totalCount, setTotalCount] = useState(0)
+  const [isFetching, setIsFetching] = useState(false)
+  const lastFetchParams = useRef<string>('')
+  const isManualRefresh = useRef(false)
+  const lastFetchTime = useRef(0)
 
   // Date range filter
   const [dateRange, setDateRange] = useState<[string, string] | null>(null)
 
-  // Fetch form configuration and initial responses
+  // Fetch form configuration on mount or refKey change
   useEffect(() => {
-    fetchForm()
-    fetchResponses(true, false) // Reset responses, not a refresh
+    if (!hasInitialized || form?.refKey !== refKey) {
+      setHasInitialized(true)
+      fetchForm()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refKey])
 
-  // Refetch when date range or search changes
+  // Fetch responses when form is loaded or filters change
   useEffect(() => {
+    // Skip if we're doing a manual refresh or already fetching
+    if (isManualRefresh.current || isFetching) {
+      isManualRefresh.current = false
+      return
+    }
+
     if (form) {
       fetchResponses(true, false) // Reset responses, not a refresh
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange, searchText, form])
+  }, [dateRange, searchText, form?.refKey])
 
   const fetchForm = useCallback(async () => {
     try {
@@ -129,6 +142,38 @@ function ResponsesViewer() {
 
   const fetchResponses = useCallback(
     async (reset: boolean = false, isRefresh: boolean = false) => {
+      // Prevent duplicate fetch calls
+      if (isFetching) return
+
+      // Build params first to check for duplicates
+      const currentOffset = reset ? 0 : responses.length
+      const params = new URLSearchParams({
+        refKey,
+        limit: String(ITEMS_PER_PAGE),
+        offset: String(currentOffset),
+      })
+
+      if (dateRange && dateRange[0] && dateRange[1]) {
+        params.append('startDate', dateRange[0])
+        params.append('endDate', dateRange[1])
+      }
+
+      if (searchText.trim()) {
+        params.append('search', searchText.trim())
+      }
+
+      const paramsString = params.toString()
+      const now = Date.now()
+
+      // Prevent duplicate requests within 100ms (to handle React StrictMode double-rendering)
+      if (lastFetchParams.current === paramsString && now - lastFetchTime.current < 100) {
+        return
+      }
+
+      lastFetchParams.current = paramsString
+      lastFetchTime.current = now
+      setIsFetching(true)
+
       if (reset) {
         if (isRefresh) {
           setTableLoading(true) // Only show table loading for refresh
@@ -144,23 +189,7 @@ function ResponsesViewer() {
       setError(null)
 
       try {
-        const currentOffset = reset ? 0 : responses.length
-        const params = new URLSearchParams({
-          refKey,
-          limit: String(ITEMS_PER_PAGE),
-          offset: String(currentOffset),
-        })
-
-        if (dateRange && dateRange[0] && dateRange[1]) {
-          params.append('startDate', dateRange[0])
-          params.append('endDate', dateRange[1])
-        }
-
-        if (searchText.trim()) {
-          params.append('search', searchText.trim())
-        }
-
-        const res = await fetch(`/api/responses?${params}`, {
+        const res = await fetch(`/api/responses?${paramsString}`, {
           credentials: 'include',
         })
 
@@ -191,9 +220,16 @@ function ResponsesViewer() {
         setLoading(false)
         setTableLoading(false)
         setIsLoadingMore(false)
+        setIsFetching(false)
+        // Reset manual refresh flag after completion
+        if (isRefresh) {
+          setTimeout(() => {
+            isManualRefresh.current = false
+          }, 100)
+        }
       }
     },
-    [refKey, dateRange, searchText, responses.length]
+    [refKey, dateRange, searchText, responses.length, isFetching]
   )
 
   // Dynamic column generation for Ant Design Table
@@ -476,7 +512,10 @@ function ResponsesViewer() {
     return (
       <Layout style={{ minHeight: '100vh' }}>
         <Content style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <Spin size="large" tip="Loading responses..." />
+          <div style={{ textAlign: 'center' }}>
+            <Spin size="large" />
+            <div style={{ marginTop: 16 }}>Loading responses...</div>
+          </div>
         </Content>
       </Layout>
     )
@@ -556,8 +595,14 @@ function ResponsesViewer() {
               <Space>
                 <Button
                   icon={<ReloadOutlined />}
-                  onClick={() => fetchResponses(true, true)}
+                  onClick={() => {
+                    if (!isFetching) {
+                      isManualRefresh.current = true
+                      fetchResponses(true, true)
+                    }
+                  }}
                   loading={tableLoading}
+                  disabled={isFetching}
                 >
                   Refresh
                 </Button>
@@ -648,7 +693,8 @@ function ResponsesViewer() {
                 {/* Infinite scroll loading indicator */}
                 {isLoadingMore && (
                   <div style={{ textAlign: 'center', padding: '16px' }}>
-                    <Spin size="small" /> Loading more responses...
+                    <Spin size="small" />
+                    <span style={{ marginLeft: 8 }}>Loading more responses...</span>
                   </div>
                 )}
 

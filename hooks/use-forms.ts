@@ -14,10 +14,11 @@ export function useForm(refKey: string) {
 }
 
 // Hook to get all forms (admin only)
-export function useForms() {
+export function useForms(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: queryKeys.formsList,
     queryFn: () => formsApi.getForms(),
+    enabled: options?.enabled ?? true,
   })
 }
 

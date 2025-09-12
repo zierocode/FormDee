@@ -1,46 +1,22 @@
 'use client'
-import { ReactNode, useEffect, useState } from 'react'
+import { ReactNode, useEffect } from 'react'
 import { Spin } from 'antd'
 import { useRouter } from 'next/navigation'
-import { AuthProvider } from './AuthProvider'
+import { useAuth } from './AuthProvider'
 
 export function AdminKeyGate({ children }: { children: ReactNode }) {
   const router = useRouter()
-  const [adminKey, setAdminKey] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const { isAuthenticated, isLoading } = useAuth()
 
   useEffect(() => {
-    // Check authentication status and get admin key from API
-    const checkAuth = async () => {
-      try {
-        const response = await fetch('/api/auth/check')
-        if (!response.ok) {
-          // Not authenticated, redirect to login with error message
-          const returnUrl = encodeURIComponent(window.location.pathname)
-          router.push(`/login?returnUrl=${returnUrl}&error=access_denied`)
-          setLoading(false)
-        } else {
-          // Get admin key from API response
-          const data = await response.json()
-          if (data.adminKey) {
-            // Admin key found
-            setAdminKey(data.adminKey)
-          } else {
-            // No admin key in API response
-          }
-          setLoading(false)
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error)
-        const returnUrl = encodeURIComponent(window.location.pathname)
-        router.push(`/login?returnUrl=${returnUrl}&error=access_denied`)
-      }
+    // Redirect to login if not authenticated and not loading
+    if (!isLoading && !isAuthenticated) {
+      const returnUrl = encodeURIComponent(window.location.pathname)
+      router.push(`/login?returnUrl=${returnUrl}&error=access_denied`)
     }
+  }, [isLoading, isAuthenticated, router])
 
-    checkAuth()
-  }, [router])
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div
         style={{
@@ -55,5 +31,9 @@ export function AdminKeyGate({ children }: { children: ReactNode }) {
     )
   }
 
-  return <AuthProvider adminKey={adminKey || ''}>{children}</AuthProvider>
+  if (!isAuthenticated) {
+    return null // Will redirect in useEffect
+  }
+
+  return <>{children}</>
 }
