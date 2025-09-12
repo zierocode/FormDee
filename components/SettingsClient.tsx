@@ -8,6 +8,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { useSettings, useUpdateSettings, useTestSettings } from '@/hooks/use-settings'
 import { settingsSchema, type SettingsData } from '@/schemas/authSchema'
 import { useAuth } from './AuthProvider'
+import { DatabaseInfo } from './DatabaseInfo'
 import { StorageInfo } from './StorageInfo'
 
 const { TextArea } = Input
@@ -254,6 +255,9 @@ export function SettingsClient({
             {testMutation.isPending ? 'Testing...' : 'Test Configuration'}
           </Button>
         </Space>
+
+        {/* Database Info section - only show in drawer mode */}
+        {inDrawer && <DatabaseInfo />}
 
         {/* Storage Info section - only show in drawer mode */}
         {inDrawer && <StorageInfo />}

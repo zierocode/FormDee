@@ -5,10 +5,23 @@ import {
   CloudServerOutlined,
   FileOutlined,
   DatabaseOutlined,
-  ThunderboltOutlined,
   ReloadOutlined,
+  WarningOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
 } from '@ant-design/icons'
-import { Card, Statistic, Progress, Space, Typography, Spin, Alert, Button, Tooltip } from 'antd'
+import {
+  Card,
+  Statistic,
+  Progress,
+  Space,
+  Typography,
+  Spin,
+  Alert,
+  Button,
+  Tooltip,
+  Tag,
+} from 'antd'
 import { useStorageStats } from '@/hooks/use-storage-stats'
 
 const { Text, Title: _Title } = Typography
@@ -52,6 +65,40 @@ export function StorageInfo() {
   const progressStatus =
     usedPercentage > 90 ? 'exception' : usedPercentage > 70 ? 'normal' : 'success'
 
+  const getHealthStatus = () => {
+    if (usedPercentage > 90) return 'critical'
+    if (usedPercentage > 70) return 'warning'
+    return 'healthy'
+  }
+
+  const getHealthIcon = () => {
+    const status = getHealthStatus()
+    switch (status) {
+      case 'healthy':
+        return <CheckCircleOutlined style={{ color: '#52c41a' }} />
+      case 'warning':
+        return <WarningOutlined style={{ color: '#faad14' }} />
+      case 'critical':
+        return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
+      default:
+        return <WarningOutlined style={{ color: '#8c8c8c' }} />
+    }
+  }
+
+  const getHealthColor = () => {
+    const status = getHealthStatus()
+    switch (status) {
+      case 'healthy':
+        return 'success'
+      case 'warning':
+        return 'warning'
+      case 'critical':
+        return 'error'
+      default:
+        return 'default'
+    }
+  }
+
   return (
     <Card
       size="small"
@@ -69,6 +116,11 @@ export function StorageInfo() {
             />
           </Tooltip>
         </Space>
+      }
+      extra={
+        <Tag icon={getHealthIcon()} color={getHealthColor()}>
+          {getHealthStatus().toUpperCase()}
+        </Tag>
       }
       styles={{ body: { padding: '12px' } }}
     >
@@ -123,32 +175,6 @@ export function StorageInfo() {
             />
           </Card>
         </div>
-
-        {/* Plan Information */}
-        <Card size="small" bordered={false} style={{ background: '#fafafa' }}>
-          <Space direction="vertical" size={4} style={{ width: '100%' }}>
-            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                <ThunderboltOutlined /> Plan
-              </Text>
-              <Text strong style={{ fontSize: 12, textTransform: 'capitalize' }}>
-                {data.limits.plan}
-              </Text>
-            </Space>
-            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                Storage Limit
-              </Text>
-              <Text style={{ fontSize: 12 }}>{data.limits.maxStorage}</Text>
-            </Space>
-            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                Operations/Month
-              </Text>
-              <Text style={{ fontSize: 12 }}>{data.limits.maxOperationsPerMonth}</Text>
-            </Space>
-          </Space>
-        </Card>
 
         {/* Warning if storage is getting full */}
         {usedPercentage > 80 && (
