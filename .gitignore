@@ -69,3 +69,4 @@ tests/api/reports/*.json
 # Apps Script (keep only final versions)
 apps-script/Code-*.gs
 .env.production
+.env.aws

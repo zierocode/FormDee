@@ -28,6 +28,15 @@ export async function GET(req: NextRequest) {
           nodeVersion: process.version,
           uptime: process.uptime(),
           memoryUsage: process.memoryUsage(),
+          nodeEnv: process.env.NODE_ENV,
+          // Add a custom env indicator (set this in your .env files)
+          envFile: process.env.ENV_FILE_INDICATOR || 'unknown',
+          // Check for production-specific vars
+          hasProductionVars: {
+            supabase: !!process.env.SUPABASE_URL,
+            r2: !!process.env.R2_BUCKET_NAME,
+            adminKey: !!process.env.ADMIN_API_KEY,
+          },
         },
       })
     }
