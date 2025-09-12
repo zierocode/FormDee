@@ -3,6 +3,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withApiAuth } from '@/lib/auth-supabase'
 import { ERROR_MESSAGES, HTTP_STATUS } from '@/lib/constants'
 
+// Force dynamic rendering since this route uses authentication
+export const dynamic = 'force-dynamic'
+
 // Initialize R2 client
 const r2Client = new S3Client({
   region: 'auto',

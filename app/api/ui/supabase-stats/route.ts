@@ -4,6 +4,9 @@ import { ERROR_MESSAGES, HTTP_STATUS } from '@/lib/constants'
 import { logger } from '@/lib/logger'
 import { supabase } from '@/lib/supabase'
 
+// Force dynamic rendering since this route uses authentication
+export const dynamic = 'force-dynamic'
+
 /**
  * UI-only endpoint for Supabase database statistics
  *
