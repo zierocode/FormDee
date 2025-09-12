@@ -13,7 +13,7 @@ export const runtime = 'nodejs'
 async function handleGet(req: NextRequest) {
   try {
     // Validate authentication first
-    const auth = await withApiAuth(req, 'any')
+    const auth = await withApiAuth(req, 'ui')
 
     if (!auth.authenticated) {
       return NextResponse.json(

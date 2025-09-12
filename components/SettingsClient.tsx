@@ -3,11 +3,12 @@
 import { useEffect } from 'react'
 import { SaveOutlined, ExperimentOutlined, LogoutOutlined } from '@ant-design/icons'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, Select, Input, Typography, Space, Spin, notification, Divider } from 'antd'
+import { Button, Select, Input, Typography, Space, Spin, notification } from 'antd'
 import { useForm, Controller } from 'react-hook-form'
 import { useSettings, useUpdateSettings, useTestSettings } from '@/hooks/use-settings'
 import { settingsSchema, type SettingsData } from '@/schemas/authSchema'
 import { useAuth } from './AuthProvider'
+import { StorageInfo } from './StorageInfo'
 
 const { TextArea } = Input
 const { Title, Text, Paragraph } = Typography
@@ -254,21 +255,21 @@ export function SettingsClient({
           </Button>
         </Space>
 
+        {/* Storage Info section - only show in drawer mode */}
+        {inDrawer && <StorageInfo />}
+
         {/* Logout section - only show in drawer mode */}
         {inDrawer && onLogout && (
-          <>
-            <Divider />
-            <Button
-              type="default"
-              danger
-              icon={<LogoutOutlined />}
-              onClick={onLogout}
-              size="large"
-              block
-            >
-              Logout
-            </Button>
-          </>
+          <Button
+            type="default"
+            danger
+            icon={<LogoutOutlined />}
+            onClick={onLogout}
+            size="large"
+            block
+          >
+            Logout
+          </Button>
         )}
       </Space>
     </>

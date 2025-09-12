@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withApiAuth } from '@/lib/auth-supabase'
 import { ERROR_MESSAGES, HTTP_STATUS } from '@/lib/constants'
 import { validateAccessToken, getGoogleAuthFromDatabase } from '@/lib/google-auth'
-import { supabase } from '@/lib/supabase'
 
 // Force dynamic rendering since we use headers for auth
 export const dynamic = 'force-dynamic'
@@ -14,7 +13,7 @@ export const runtime = 'nodejs'
 async function handleGet(req: NextRequest) {
   try {
     // Validate authentication first
-    const auth = await withApiAuth(req, 'any')
+    const auth = await withApiAuth(req, 'ui')
 
     if (!auth.authenticated) {
       return NextResponse.json(
@@ -37,40 +36,23 @@ async function handleGet(req: NextRequest) {
     // Get Google auth for this specific form
     const googleAuth = await getGoogleAuthFromDatabase(refKey)
 
-    if (googleAuth) {
+    if (googleAuth && googleAuth.email) {
       // Validate the access token
       const isValid = await validateAccessToken(googleAuth.accessToken)
 
       if (isValid) {
-        // Get user info from database
-        const { data: form } = await supabase
-          .from('Forms')
-          .select('google_auth_id')
-          .eq('refKey', refKey)
-          .single()
-
-        if (form?.google_auth_id) {
-          const { data: googleAuthData } = await supabase
-            .from('GoogleAuth')
-            .select('*')
-            .eq('id', form.google_auth_id)
-            .single()
-
-          if (googleAuthData) {
-            return NextResponse.json({
-              ok: true,
-              data: {
-                authenticated: true,
-                user: {
-                  email: googleAuthData.email,
-                  name: googleAuthData.name,
-                  picture: googleAuthData.picture,
-                },
-                expiresAt: googleAuthData.expiry_date,
-              },
-            })
-          }
-        }
+        return NextResponse.json({
+          ok: true,
+          data: {
+            authenticated: true,
+            user: {
+              email: googleAuth.email,
+              name: googleAuth.name,
+              picture: googleAuth.picture,
+            },
+            expiresAt: googleAuth.expiryDate,
+          },
+        })
       } else {
         // Token expired, needs re-authentication
         return NextResponse.json({

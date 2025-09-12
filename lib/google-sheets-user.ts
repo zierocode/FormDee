@@ -5,6 +5,10 @@ interface GoogleSheetsResult {
   success: boolean
   error?: string
   rowsAppended?: number
+  spreadsheetTitle?: string
+  spreadsheetId?: string
+  sheetName?: string
+  sheetExists?: boolean
 }
 
 // interface AppendOptions {
@@ -66,6 +70,7 @@ export async function testGoogleSheetsConnectionWithUser(
   success: boolean
   error?: string
   spreadsheetTitle?: string
+  spreadsheetId?: string
 }> {
   try {
     const sheets = await getSheetsClientWithUserAuth(userAuth)
@@ -91,6 +96,7 @@ export async function testGoogleSheetsConnectionWithUser(
       return {
         success: true,
         spreadsheetTitle: response.data.properties.title || undefined,
+        spreadsheetId,
       }
     } else {
       return {
@@ -136,6 +142,9 @@ export async function testWriteGoogleSheet(
   error?: string
   needsSheetCreation?: boolean
   sheetName?: string
+  sheetExists?: boolean
+  spreadsheetId?: string
+  spreadsheetTitle?: string
 }> {
   try {
     const sheets = await getSheetsClientWithUserAuth(userAuth)
@@ -146,6 +155,18 @@ export async function testWriteGoogleSheet(
         success: false,
         error: 'Invalid Google Sheets URL format',
       }
+    }
+
+    // Get spreadsheet metadata first
+    let spreadsheetTitle: string | undefined
+    try {
+      const metadataResponse = await sheets.spreadsheets.get({
+        spreadsheetId,
+        fields: 'properties.title',
+      })
+      spreadsheetTitle = metadataResponse.data?.properties?.title || undefined
+    } catch (error) {
+      // Continue with write test even if metadata fails
     }
 
     // Fixed sheet name for all FormDee forms
@@ -176,7 +197,7 @@ export async function testWriteGoogleSheet(
       })
 
       logger.info('[Google Sheets] Write test successful - sheet is writable')
-      return { success: true, sheetName }
+      return { success: true, sheetName, sheetExists: true, spreadsheetId, spreadsheetTitle }
     } catch (writeError: any) {
       if (writeError.code === 403) {
         return {
@@ -191,6 +212,9 @@ export async function testWriteGoogleSheet(
           error: `Sheet '${sheetName}' does not exist in this spreadsheet. It will be created when you save.`,
           needsSheetCreation: true,
           sheetName,
+          sheetExists: false,
+          spreadsheetId,
+          spreadsheetTitle,
         }
       }
       throw writeError

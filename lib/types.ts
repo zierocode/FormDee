@@ -38,7 +38,7 @@ export type FormConfig = {
   googleSheetEnabled?: boolean
   fields: FormField[]
   createdAt?: string
-  updatedAt?: string
+  updated_at?: string
   prevRefKey?: string // Used for form updates
 }
 

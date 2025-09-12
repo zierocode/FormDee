@@ -113,7 +113,7 @@ function ResponsesViewer() {
 
   const fetchForm = useCallback(async () => {
     try {
-      const res = await fetch(`/api/forms?refKey=${refKey}`, {
+      const res = await fetch(`/api/ui/forms?refKey=${refKey}`, {
         credentials: 'include',
       })
 
@@ -189,7 +189,7 @@ function ResponsesViewer() {
       setError(null)
 
       try {
-        const res = await fetch(`/api/responses?${paramsString}`, {
+        const res = await fetch(`/api/ui/responses?${paramsString}`, {
           credentials: 'include',
         })
 

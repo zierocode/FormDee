@@ -37,8 +37,8 @@ async function handleGet(req: NextRequest) {
       return NextResponse.json({ ok: true, data })
     }
 
-    // Admin endpoints - validate authentication (allow both UI and API keys)
-    const auth = await withApiAuth(req, 'any')
+    // Admin endpoints - validate authentication (API key only)
+    const auth = await withApiAuth(req, 'api')
 
     if (!auth.authenticated) {
       return errorResponse(auth.error || ERROR_MESSAGES.UNAUTHORIZED, HTTP_STATUS.UNAUTHORIZED)
@@ -78,8 +78,8 @@ async function handleGet(req: NextRequest) {
 
 async function handlePost(req: NextRequest) {
   try {
-    // Validate authentication - POST operations require API or UI key
-    const auth = await withApiAuth(req, 'any')
+    // Validate authentication - POST operations require API key
+    const auth = await withApiAuth(req, 'api')
 
     if (!auth.authenticated) {
       return errorResponse(auth.error || ERROR_MESSAGES.UNAUTHORIZED, HTTP_STATUS.UNAUTHORIZED)

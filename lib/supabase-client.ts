@@ -12,7 +12,7 @@ export interface FormRecord {
   slackWebhookUrl?: string
   fields: FormField[] | string // Can be JSON string from database
   created_at?: string
-  updatedAt?: string
+  updated_at?: string
 }
 
 export interface ResponseRecord {
@@ -40,7 +40,7 @@ export const formsApi = {
 
   // Get all forms (admin)
   async getForms(): Promise<FormConfig[]> {
-    const response = await fetch('/api/forms')
+    const response = await fetch('/api/ui/forms')
     const data = await response.json()
 
     if (!response.ok) {
@@ -52,7 +52,7 @@ export const formsApi = {
 
   // Create or update form (admin)
   async upsertForm(form: FormConfig): Promise<FormConfig> {
-    const response = await fetch('/api/forms', {
+    const response = await fetch('/api/ui/forms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
@@ -69,7 +69,7 @@ export const formsApi = {
 
   // Delete form (admin)
   async deleteForm(refKey: string): Promise<void> {
-    const response = await fetch(`/api/forms?refKey=${encodeURIComponent(refKey)}`, {
+    const response = await fetch(`/api/ui/forms?refKey=${encodeURIComponent(refKey)}`, {
       method: 'DELETE',
     })
 
@@ -100,7 +100,7 @@ export const responsesApi = {
       ...(options.endDate && { endDate: options.endDate }),
     })
 
-    const response = await fetch(`/api/responses?${params}`)
+    const response = await fetch(`/api/ui/responses?${params}`)
     const data = await response.json()
 
     if (!response.ok) {
@@ -141,7 +141,7 @@ export const responsesApi = {
 
   // Get response statistics for a form
   async getResponseStats(refKey: string): Promise<{ count: number; lastResponseDate?: string }> {
-    const response = await fetch(`/api/responses?refKey=${encodeURIComponent(refKey)}&limit=1`)
+    const response = await fetch(`/api/ui/responses?refKey=${encodeURIComponent(refKey)}&limit=1`)
     const data = await response.json()
 
     if (!response.ok) {
@@ -159,7 +159,7 @@ export const responsesApi = {
 export const settingsApi = {
   // Get settings (admin)
   async getSettings(): Promise<{ aiModel: string; apiKey: string }> {
-    const response = await fetch('/api/settings')
+    const response = await fetch('/api/ui/settings')
     const data = await response.json()
 
     if (!response.ok) {
@@ -171,7 +171,7 @@ export const settingsApi = {
 
   // Update settings (admin)
   async updateSettings(settings: { aiModel: string; apiKey: string }): Promise<void> {
-    const response = await fetch('/api/settings', {
+    const response = await fetch('/api/ui/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings),
@@ -186,7 +186,7 @@ export const settingsApi = {
 
   // Test settings configuration (admin)
   async testSettings(settings: { aiModel: string; apiKey: string }): Promise<void> {
-    const response = await fetch('/api/settings/test', {
+    const response = await fetch('/api/ui/settings/test', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -12,7 +12,7 @@ import { supabase } from '@/lib/supabase'
 async function handlePost(req: NextRequest) {
   try {
     // Validate authentication
-    const auth = await withApiAuth(req, 'any')
+    const auth = await withApiAuth(req, 'api')
 
     if (!auth.authenticated) {
       return NextResponse.json(

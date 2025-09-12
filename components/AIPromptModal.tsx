@@ -1,17 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { RobotOutlined, LoadingOutlined, BulbOutlined } from '@ant-design/icons'
+import { RobotOutlined, LoadingOutlined } from '@ant-design/icons'
 import Alert from 'antd/es/alert'
 import Button from 'antd/es/button'
 import Form from 'antd/es/form'
 import Input from 'antd/es/input'
-import List from 'antd/es/list'
 import Modal from 'antd/es/modal'
 import Typography from 'antd/es/typography'
 
 const { TextArea } = Input
-const { Text } = Typography
+const { Text, Title } = Typography
 
 interface AIPromptModalProps {
   isOpen: boolean
@@ -37,7 +36,7 @@ export default function AIPromptModal({ isOpen, onClose, onGenerate }: AIPromptM
     setConfigError('')
 
     try {
-      const response = await fetch('/api/ai/generate', {
+      const response = await fetch('/api/ui/ai/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -49,7 +48,11 @@ export default function AIPromptModal({ isOpen, onClose, onGenerate }: AIPromptM
       const data = await response.json()
 
       if (!response.ok) {
-        const errorMessage = data.error || 'Failed to generate form'
+        // Handle both string error messages and nested error objects
+        const errorMessage =
+          typeof data.error === 'string'
+            ? data.error
+            : data.error?.message || data.message || 'Failed to generate form'
 
         // Check if it's a configuration error
         if (
@@ -65,7 +68,7 @@ export default function AIPromptModal({ isOpen, onClose, onGenerate }: AIPromptM
       }
 
       // Pass the generated form data to parent
-      onGenerate(data)
+      onGenerate(data.data)
       form.resetFields()
       onClose()
     } catch (err: any) {
@@ -82,91 +85,103 @@ export default function AIPromptModal({ isOpen, onClose, onGenerate }: AIPromptM
     onClose()
   }
 
-  const tips = [
-    'Be specific: "Contact form with name, email, phone, company, and message"',
-    'Mention validation: "Email must be required, phone optional"',
-    'Specify field types: "Include rating dropdown and file upload for documents"',
-    'Add context: "Job application form for software developer position"',
-    'Request options: "Survey with yes/no questions and rating scale 1-5"',
-  ]
-
   return (
     <Modal
-      title={
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <RobotOutlined style={{ color: '#1890ff', fontSize: '20px' }} />
-          <span>Create Form with AI</span>
-        </div>
-      }
       open={isOpen}
       onCancel={handleCancel}
       footer={null}
-      width={600}
+      width={500}
       maskClosable={!loading}
-      closable={!loading}
+      closable={false}
+      centered
+      styles={{
+        body: { padding: '24px' },
+        header: { display: 'none' },
+      }}
     >
+      <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '56px',
+            height: '56px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
+            marginBottom: '12px',
+          }}
+        >
+          <RobotOutlined style={{ color: 'white', fontSize: '28px' }} />
+        </div>
+        <Title level={3} style={{ margin: 0, color: '#1f2937', fontSize: '20px' }}>
+          Create Form with AI
+        </Title>
+        <Text type="secondary" style={{ fontSize: '13px' }}>
+          Describe your form and let AI build it for you
+        </Text>
+      </div>
+
       <Form form={form} layout="vertical" onFinish={handleSubmit} disabled={loading}>
         <Form.Item
           name="prompt"
-          label="Describe the form you want to create"
           rules={[
-            { required: true, message: 'Please enter a prompt' },
+            { required: true, message: 'Please describe your form' },
             { min: 10, message: 'Please provide more details (at least 10 characters)' },
           ]}
         >
           <TextArea
-            placeholder="e.g., Create a customer feedback form with name (required), email (required), satisfaction rating (1-5 scale), and detailed comments (optional). Include file upload for attachments."
-            rows={5}
+            placeholder="e.g., Contact form with name, email, and message fields"
+            rows={3}
             showCount
-            maxLength={800}
+            maxLength={300}
+            style={{
+              fontSize: '15px',
+              lineHeight: '1.5',
+              border: '2px solid #f0f0f0',
+              borderRadius: '8px',
+              padding: '10px 14px',
+            }}
           />
         </Form.Item>
 
         {configError && (
           <Alert
             type="warning"
-            message="AI Configuration Required"
-            description={
-              <div>
-                <Text>{configError}</Text>
-                <br />
-                <Text type="secondary" style={{ fontSize: '12px' }}>
-                  Please configure your AI settings in the Settings menu before using AI form
-                  generation.
-                </Text>
-              </div>
-            }
-            style={{ marginBottom: '16px' }}
+            message="Setup Required"
+            description={configError}
+            style={{ marginBottom: '20px', borderRadius: '8px' }}
             showIcon
           />
         )}
 
         {error && !configError && (
-          <Alert type="error" message={error} style={{ marginBottom: '16px' }} showIcon />
+          <Alert
+            type="error"
+            message={error}
+            style={{ marginBottom: '20px', borderRadius: '8px' }}
+            showIcon
+          />
         )}
 
-        <Alert
-          type="info"
-          message="🚀 Powered by AI - Tips for best results:"
-          description={
-            <List
-              size="small"
-              dataSource={tips}
-              renderItem={(tip) => (
-                <List.Item style={{ padding: '6px 0', border: 'none' }}>
-                  <Text type="secondary" style={{ fontSize: '13px' }}>
-                    • {tip}
-                  </Text>
-                </List.Item>
-              )}
-            />
-          }
-          icon={<BulbOutlined />}
-          style={{ marginBottom: '24px' }}
-        />
-
-        <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-          <Button onClick={handleCancel} disabled={loading} style={{ marginRight: '8px' }}>
+        <div
+          style={{
+            display: 'flex',
+            gap: '10px',
+            marginTop: '20px',
+          }}
+        >
+          <Button
+            onClick={handleCancel}
+            disabled={loading}
+            size="large"
+            style={{
+              flex: 1,
+              height: '44px',
+              borderRadius: '6px',
+              fontWeight: '500',
+            }}
+          >
             Cancel
           </Button>
           <Button
@@ -174,10 +189,35 @@ export default function AIPromptModal({ isOpen, onClose, onGenerate }: AIPromptM
             htmlType="submit"
             icon={loading ? <LoadingOutlined /> : <RobotOutlined />}
             loading={loading}
+            size="large"
+            style={{
+              flex: 2,
+              height: '44px',
+              borderRadius: '6px',
+              fontWeight: '500',
+              background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
+              border: 'none',
+            }}
           >
-            {loading ? 'Generating...' : 'Generate Form'}
+            {loading ? 'Creating...' : 'Generate Form'}
           </Button>
-        </Form.Item>
+        </div>
+
+        {!configError && !error && (
+          <div
+            style={{
+              textAlign: 'center',
+              marginTop: '16px',
+              padding: '8px 12px',
+              background: '#f8fafc',
+              borderRadius: '6px',
+            }}
+          >
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              💡 Be specific about field types and validation rules for best results
+            </Text>
+          </div>
+        )}
       </Form>
     </Modal>
   )

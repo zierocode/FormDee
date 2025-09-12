@@ -6,10 +6,21 @@ import { exportResponsesToGoogleSheets } from '@/lib/google-sheets-user'
 import { logger } from '@/lib/logger'
 import { supabase } from '@/lib/supabase'
 
+/**
+ * UI-only endpoint for exporting responses to Google Sheets
+ *
+ * IMPORTANT: This endpoint is ONLY for UI/browser access
+ * - Uses UI authentication (cookie-based)
+ * - DO NOT modify to accept API keys
+ * - For API access, use /api/forms/export-responses instead
+ *
+ * Security: UI key only - never accept API keys here
+ */
+
 async function handlePost(req: NextRequest) {
   try {
-    // Validate authentication
-    const auth = await withApiAuth(req, 'api')
+    // Validate UI authentication
+    const auth = await withApiAuth(req, 'ui')
 
     if (!auth.authenticated) {
       return NextResponse.json(
@@ -46,12 +57,14 @@ async function handlePost(req: NextRequest) {
     const googleSession = await getGoogleAuthFromDatabase(refKey)
 
     if (!googleSession || !googleSession.accessToken) {
+      logger.error('[UI API] No Google auth found for form', { refKey })
+
       return NextResponse.json(
         {
           ok: false,
           error: 'Google authentication required',
           details: {
-            suggestion: 'Please authenticate with Google first',
+            suggestion: 'Please authenticate with Google first to export responses',
             needsAuth: true,
           },
         },
@@ -59,7 +72,12 @@ async function handlePost(req: NextRequest) {
       )
     }
 
-    // Get existing responses from Supabase
+    logger.info('[UI API] Exporting responses to Google Sheets', {
+      refKey,
+      url: googleSheetUrl,
+    })
+
+    // Get all responses from Supabase
     const { data: responses, error: responsesError } = await supabase
       .from('Responses')
       .select('*')
@@ -67,17 +85,17 @@ async function handlePost(req: NextRequest) {
       .order('submittedAt', { ascending: true })
 
     if (responsesError) {
-      logger.error('Error fetching responses:', responsesError)
+      logger.error('[UI API] Error fetching responses:', responsesError)
       return NextResponse.json(
-        { ok: false, error: 'Failed to fetch existing responses' },
+        { ok: false, error: 'Failed to fetch responses' },
         { status: HTTP_STATUS.INTERNAL_SERVER_ERROR }
       )
     }
 
-    // Prepare headers for Google Sheets
+    // Prepare headers (column names)
     const headers = ['Timestamp', ...fields.map((field: any) => field.label || field.key)]
 
-    // Prepare response data for Google Sheets
+    // Transform responses into rows
     const responseData =
       responses?.map((response) => {
         const formData = response.formData || {}
@@ -85,14 +103,13 @@ async function handlePost(req: NextRequest) {
           response.submittedAt || new Date().toISOString(),
           ...fields.map((field: any) => {
             const value = formData[field.key] || ''
+            // Convert arrays/objects to string for sheets
             return typeof value === 'object' ? JSON.stringify(value) : String(value)
           }),
         ]
       }) || []
 
-    logger.info(`[Export] Exporting ${responseData.length} existing responses for form: ${refKey}`)
-
-    // Export to Google Sheets (will create sheet if it doesn't exist)
+    // Export to Google Sheets
     const exportResult = await exportResponsesToGoogleSheets(
       googleSheetUrl,
       headers,
@@ -103,60 +120,52 @@ async function handlePost(req: NextRequest) {
       }
     )
 
-    if (exportResult.success) {
-      // If a new spreadsheet was created, update the form with the new URL
-      if (exportResult.newSpreadsheetUrl) {
-        logger.info(
-          `[Export] New spreadsheet created, updating form with URL: ${exportResult.newSpreadsheetUrl}`
-        )
-
-        const { error: updateError } = await supabase
-          .from('Forms')
-          .update({ googleSheetUrl: exportResult.newSpreadsheetUrl })
-          .eq('refKey', refKey)
-
-        if (updateError) {
-          logger.error('Failed to update form with new Google Sheet URL:', updateError)
-        }
-
-        return NextResponse.json({
-          ok: true,
-          message: `Created new Google Sheet and exported ${exportResult.rowsAppended || 0} responses`,
-          newSpreadsheetUrl: exportResult.newSpreadsheetUrl,
-          details: {
-            status: 'New spreadsheet created and responses exported',
-            responsesExported: exportResult.rowsAppended || 0,
-            totalResponses: responseData.length,
-            newSpreadsheet: true,
-          },
-        })
-      }
-
-      return NextResponse.json({
-        ok: true,
-        message: `Successfully exported ${exportResult.rowsAppended || 0} existing responses to Google Sheets`,
-        details: {
-          status: 'Export completed successfully',
-          responsesExported: exportResult.rowsAppended || 0,
-          totalResponses: responseData.length,
-        },
-      })
-    } else {
+    if (!exportResult.success) {
+      logger.error('[UI API] Export failed:', exportResult.error)
       return NextResponse.json(
         {
           ok: false,
           error: exportResult.error || 'Failed to export responses to Google Sheets',
-          details: {
-            suggestion: exportResult.error?.includes('authentication')
-              ? 'Please re-authenticate with Google'
-              : 'Make sure you have edit access to this Google Sheet',
-          },
         },
         { status: HTTP_STATUS.BAD_REQUEST }
       )
     }
+
+    // If a new spreadsheet was created, update the form
+    if (exportResult.newSpreadsheetUrl) {
+      const { error: updateError } = await supabase
+        .from('Forms')
+        .update({ googleSheetUrl: exportResult.newSpreadsheetUrl })
+        .eq('refKey', refKey)
+
+      if (updateError) {
+        logger.error('[UI API] Failed to update form with new Google Sheet URL:', updateError)
+      }
+
+      return NextResponse.json({
+        ok: true,
+        message: `Created new spreadsheet and exported ${exportResult.rowsAppended || 0} responses`,
+        newSpreadsheetUrl: exportResult.newSpreadsheetUrl,
+        details: {
+          responsesExported: exportResult.rowsAppended || 0,
+          spreadsheetTitle: exportResult.spreadsheetTitle || 'FormDee Responses',
+          newSpreadsheetCreated: true,
+        },
+      })
+    }
+
+    // Success
+    return NextResponse.json({
+      ok: true,
+      message: `Successfully exported ${exportResult.rowsAppended || 0} responses to Google Sheets`,
+      details: {
+        responsesExported: exportResult.rowsAppended || 0,
+        spreadsheetTitle: exportResult.spreadsheetTitle,
+        sheetName: exportResult.sheetName || 'FormDee Responses',
+      },
+    })
   } catch (error: any) {
-    logger.error('[API] Export responses error:', error)
+    logger.error('[UI API] Export responses error:', error)
     return NextResponse.json(
       {
         ok: false,

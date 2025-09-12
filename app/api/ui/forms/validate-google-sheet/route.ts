@@ -10,10 +10,21 @@ import {
 import { logger } from '@/lib/logger'
 import { supabase } from '@/lib/supabase'
 
+/**
+ * UI-only endpoint for validating Google Sheets
+ *
+ * IMPORTANT: This endpoint is ONLY for UI/browser access
+ * - Uses UI authentication (cookie-based)
+ * - DO NOT modify to accept API keys
+ * - For API access, use /api/forms/validate-google-sheet instead
+ *
+ * Security: UI key only - never accept API keys here
+ */
+
 async function handlePost(req: NextRequest) {
   try {
-    // Validate authentication
-    const auth = await withApiAuth(req, 'api')
+    // Validate UI authentication
+    const auth = await withApiAuth(req, 'ui')
 
     if (!auth.authenticated) {
       return NextResponse.json(
@@ -65,7 +76,7 @@ async function handlePost(req: NextRequest) {
     if (!testResult.success && testResult.error?.includes('Spreadsheet not found')) {
       // Sheet doesn't exist - create it and export all responses
       logger.info(
-        '[Validate Google Sheet] Spreadsheet not found, creating new one and exporting responses'
+        '[UI API] Validate Google Sheet: Spreadsheet not found, creating new one and exporting responses'
       )
 
       if (!refKey || !fields || !Array.isArray(fields)) {
@@ -88,7 +99,7 @@ async function handlePost(req: NextRequest) {
         .order('submittedAt', { ascending: true })
 
       if (responsesError) {
-        logger.error('Error fetching responses:', responsesError)
+        logger.error('[UI API] Error fetching responses:', responsesError)
       }
 
       // Prepare headers and response data
@@ -125,7 +136,7 @@ async function handlePost(req: NextRequest) {
             .eq('refKey', refKey)
 
           if (updateError) {
-            logger.error('Failed to update form with new Google Sheet URL:', updateError)
+            logger.error('[UI API] Failed to update form with new Google Sheet URL:', updateError)
           }
         }
 
@@ -171,7 +182,7 @@ async function handlePost(req: NextRequest) {
       if (writeTest.needsSheetCreation) {
         // Sheet needs to be created - create it now and export all responses
         logger.info(
-          '[Validate Google Sheet] Sheet needs creation, creating and exporting responses'
+          '[UI API] Validate Google Sheet: Sheet needs creation, creating and exporting responses'
         )
 
         // Get existing responses from Supabase
@@ -182,7 +193,7 @@ async function handlePost(req: NextRequest) {
           .order('submittedAt', { ascending: true })
 
         if (responsesError) {
-          logger.error('Error fetching responses:', responsesError)
+          logger.error('[UI API] Error fetching responses:', responsesError)
         }
 
         // Prepare headers and response data
@@ -251,7 +262,7 @@ async function handlePost(req: NextRequest) {
       },
     })
   } catch (error: any) {
-    logger.error('[API] Validate Google Sheet error:', error)
+    logger.error('[UI API] Validate Google Sheet error:', error)
     return NextResponse.json(
       {
         ok: false,

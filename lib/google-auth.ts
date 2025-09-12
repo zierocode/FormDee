@@ -4,6 +4,9 @@ export interface GoogleAuth {
   accessToken: string
   refreshToken: string
   expiryDate?: number
+  email?: string
+  name?: string
+  picture?: string
 }
 
 export interface GoogleUserInfo {
@@ -157,39 +160,45 @@ export async function getGoogleAuthFromDatabase(refKey: string): Promise<GoogleA
   try {
     const { supabase } = await import('@/lib/supabase')
 
-    // Get form's Google auth ID
+    // First, try to get form's Google auth ID
     const { data: form } = await supabase
       .from('Forms')
       .select('google_auth_id')
       .eq('refKey', refKey)
       .single()
 
-    if (!form?.google_auth_id) {
-      return null
+    // If form has google_auth_id, use it
+    if (form?.google_auth_id) {
+      // Get Google auth credentials by ID
+      const { data: googleAuth } = await supabase
+        .from('GoogleAuth')
+        .select('*')
+        .eq('id', form.google_auth_id)
+        .single()
+
+      if (!googleAuth) {
+        return null
+      }
+
+      // Update last used timestamp
+      await supabase
+        .from('GoogleAuth')
+        .update({ last_used_at: new Date().toISOString() })
+        .eq('id', googleAuth.id)
+
+      return {
+        accessToken: googleAuth.access_token,
+        refreshToken: googleAuth.refresh_token,
+        expiryDate: googleAuth.expiry_date,
+        email: googleAuth.email,
+        name: googleAuth.name,
+        picture: googleAuth.picture,
+      }
     }
 
-    // Get Google auth credentials
-    const { data: googleAuth } = await supabase
-      .from('GoogleAuth')
-      .select('*')
-      .eq('id', form.google_auth_id)
-      .single()
-
-    if (!googleAuth) {
-      return null
-    }
-
-    // Update last used timestamp
-    await supabase
-      .from('GoogleAuth')
-      .update({ last_used_at: new Date().toISOString() })
-      .eq('id', googleAuth.id)
-
-    return {
-      accessToken: googleAuth.access_token,
-      refreshToken: googleAuth.refresh_token,
-      expiryDate: googleAuth.expiry_date,
-    }
+    // If form doesn't have google_auth_id, return null
+    // The form needs to be linked to a GoogleAuth record via google_auth_id
+    return null
   } catch (error) {
     console.error('Error getting Google auth from database:', error)
     return null

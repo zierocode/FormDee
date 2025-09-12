@@ -2,16 +2,13 @@
 import { useState, useMemo, useCallback, useRef } from 'react'
 import {
   EditOutlined,
-  CopyOutlined,
   ExportOutlined,
   SearchOutlined,
-  CheckOutlined,
   ReloadOutlined,
   CopyFilled,
   ClockCircleOutlined,
   BarChartOutlined,
   LinkOutlined,
-  DeleteOutlined,
 } from '@ant-design/icons'
 import {
   List,
@@ -26,7 +23,6 @@ import {
   notification,
   Tooltip,
   Divider,
-  Popconfirm,
 } from 'antd'
 import { useForms } from '@/hooks/use-forms'
 import { useResponseStats } from '@/hooks/use-responses'
@@ -133,10 +129,9 @@ export function FormsList() {
   const { data: allItems = [], isLoading: loading, error: queryError, refetch } = useForms()
 
   // Removed displayedItems state - will calculate directly instead
-  const [copiedRefKey, setCopiedRefKey] = useState<string | null>(null)
+  const [_copiedRefKey, setCopiedRefKey] = useState<string | null>(null)
   const [loadingEdit, setLoadingEdit] = useState<string | null>(null)
   const [loadingDuplicate, setLoadingDuplicate] = useState<string | null>(null)
-  const [loadingDelete, setLoadingDelete] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -154,7 +149,7 @@ export function FormsList() {
         refKey: item.refKey,
         title: item.title || '',
         description: item.description || '',
-        updatedAt: item.updatedAt || item.createdAt || null,
+        updatedAt: item.updated_at || item.createdAt || null,
       }))
       .sort((a, b) => a.title.localeCompare(b.title) || a.refKey.localeCompare(b.refKey))
   }, [allItems])
@@ -256,43 +251,6 @@ export function FormsList() {
     }
   }
 
-  // Handle delete button click with loading animation
-  async function handleDeleteClick(refKey: string) {
-    setLoadingDelete(refKey)
-
-    try {
-      const response = await fetch(`/api/forms?refKey=${encodeURIComponent(refKey)}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      })
-
-      const result = await response.json()
-
-      if (result.ok) {
-        notification.success({
-          message: 'Form Deleted',
-          description: `Form "${refKey}" deleted successfully`,
-          placement: 'bottomRight',
-        })
-        // Refetch the forms list to update UI
-        refetch()
-      } else {
-        throw new Error(result.error?.message || 'Failed to delete form')
-      }
-    } catch (error: any) {
-      notification.error({
-        message: 'Delete Failed',
-        description: `Failed to delete form: ${error.message}`,
-        placement: 'bottomRight',
-      })
-    } finally {
-      setLoadingDelete(null)
-    }
-  }
-
   // Removed infinite scroll to prevent infinite loop issues
   // Users can click "Load More" button to load additional items
 
@@ -358,91 +316,31 @@ export function FormsList() {
           dataSource={displayedItems}
           loading={loading}
           renderItem={(item) => (
-            <Card style={{ marginBottom: 8 }}>
+            <Card style={{ marginBottom: 8 }} styles={{ body: { padding: '8px 24px' } }}>
               <List.Item
                 extra={
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-end',
-                      gap: 8,
-                    }}
-                  >
-                    <Space size="small">
-                      <Tooltip title="Edit form">
-                        <Button
-                          type="primary"
-                          icon={<EditOutlined />}
-                          loading={loadingEdit === item.refKey}
-                          onClick={() => handleEditClick(item.refKey)}
-                        >
-                          Edit
-                        </Button>
-                      </Tooltip>
-                      <Tooltip title="Duplicate form">
-                        <Button
-                          icon={<CopyFilled />}
-                          loading={loadingDuplicate === item.refKey}
-                          onClick={() => handleDuplicateClick(item.refKey)}
-                        >
-                          Duplicate
-                        </Button>
-                      </Tooltip>
-                      <Popconfirm
-                        title="Delete this form?"
-                        description={
-                          <div>
-                            <p>This action will permanently delete:</p>
-                            <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
-                              <li>The form configuration</li>
-                              <li>All form responses</li>
-                              <li>All uploaded files from storage</li>
-                            </ul>
-                            <p style={{ color: '#ff4d4f', fontWeight: 'bold', margin: 0 }}>
-                              This cannot be undone!
-                            </p>
-                          </div>
-                        }
-                        placement="topRight"
-                        okText="Delete"
-                        okType="danger"
-                        cancelText="Cancel"
-                        onConfirm={() => handleDeleteClick(item.refKey)}
+                  <Space size="small">
+                    <Tooltip title="Edit form">
+                      <Button
+                        type="primary"
+                        icon={<EditOutlined />}
+                        loading={loadingEdit === item.refKey}
+                        onClick={() => handleEditClick(item.refKey)}
                       >
-                        <Tooltip title="Delete form and all data">
-                          <Button
-                            danger
-                            icon={<DeleteOutlined />}
-                            loading={loadingDelete === item.refKey}
-                          >
-                            Delete
-                          </Button>
-                        </Tooltip>
-                      </Popconfirm>
-                    </Space>
-                    <Space size="small">
-                      <ViewResponsesButton refKey={item.refKey} />
-                      <Tooltip title="Copy form URL">
-                        <Button
-                          icon={copiedRefKey === item.refKey ? <CheckOutlined /> : <CopyOutlined />}
-                          onClick={() => copyFormUrl(item.refKey)}
-                          type={copiedRefKey === item.refKey ? 'primary' : 'default'}
-                        >
-                          {copiedRefKey === item.refKey ? 'Copied!' : 'Copy URL'}
-                        </Button>
-                      </Tooltip>
-                      <Tooltip title="Open form">
-                        <Button
-                          icon={<ExportOutlined />}
-                          href={`/f/${encodeURIComponent(item.refKey)}`}
-                          target="_blank"
-                        >
-                          Open Form
-                        </Button>
-                      </Tooltip>
-                    </Space>
-                  </div>
+                        Edit
+                      </Button>
+                    </Tooltip>
+                    <Tooltip title="Duplicate form">
+                      <Button
+                        icon={<CopyFilled />}
+                        loading={loadingDuplicate === item.refKey}
+                        onClick={() => handleDuplicateClick(item.refKey)}
+                      >
+                        Duplicate
+                      </Button>
+                    </Tooltip>
+                    <ViewResponsesButton refKey={item.refKey} />
+                  </Space>
                 }
               >
                 <List.Item.Meta
@@ -463,9 +361,23 @@ export function FormsList() {
 
                       <Space>
                         <LinkOutlined />
-                        <Text type="secondary" code>
-                          {`${window.location.origin}/f/${item.refKey}`}
-                        </Text>
+                        <Tooltip title="Click to copy URL">
+                          <Text
+                            type="secondary"
+                            code
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => copyFormUrl(item.refKey)}
+                          >
+                            {`${window.location.origin}/f/${item.refKey}`}
+                          </Text>
+                        </Tooltip>
+                        <Button
+                          size="small"
+                          icon={<ExportOutlined />}
+                          onClick={() => window.open(`/f/${item.refKey}`, '_blank')}
+                        >
+                          Open Form
+                        </Button>
                       </Space>
                     </Space>
                   }

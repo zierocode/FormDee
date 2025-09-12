@@ -7,7 +7,7 @@ import { testGoogleSheetsConnectionWithUser } from '@/lib/google-sheets-user'
 async function handlePost(req: NextRequest) {
   try {
     // Validate authentication
-    const auth = await withApiAuth(req, 'any')
+    const auth = await withApiAuth(req, 'api')
 
     if (!auth.authenticated) {
       return NextResponse.json(

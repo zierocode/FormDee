@@ -259,12 +259,12 @@ export function BuilderForm({
               setTestingGoogleSheet(true)
               try {
                 // Call the validation endpoint directly
-                const response = await fetch('/api/forms/validate-google-sheet', {
+                const response = await fetch('/api/ui/forms/validate-google-sheet', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
-                    credentials: 'include',
                   },
+                  credentials: 'include',
                   body: JSON.stringify({
                     googleSheetUrl: watchedValues.googleSheetUrl,
                     refKey: watchedValues.refKey,
@@ -601,12 +601,12 @@ export function BuilderForm({
   const handleTestSlack = async () => {
     setTestingSlack(true)
     try {
-      const response = await fetch('/api/forms/test-slack', {
+      const response = await fetch('/api/ui/forms/test-slack', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          credentials: 'include',
         },
+        credentials: 'include',
         body: JSON.stringify({
           refKey: watchedValues.refKey,
           slackWebhookUrl: watchedValues.slackWebhookUrl,
@@ -642,12 +642,12 @@ export function BuilderForm({
   const handleTestGoogleSheet = async () => {
     setTestingGoogleSheet(true)
     try {
-      const response = await fetch('/api/forms/test-google-sheet', {
+      const response = await fetch('/api/ui/forms/test-google-sheet', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          credentials: 'include',
         },
+        credentials: 'include',
         body: JSON.stringify({
           refKey: watchedValues.refKey,
           googleSheetUrl: watchedValues.googleSheetUrl,
@@ -914,7 +914,7 @@ export function BuilderForm({
 
     // Directly proceed with resync - the export endpoint will handle sheet creation if needed
     try {
-      const response = await fetch('/api/forms/export-responses', {
+      const response = await fetch('/api/ui/forms/export-responses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1021,7 +1021,7 @@ export function BuilderForm({
 
     setLoadingDelete(true)
     try {
-      const response = await fetch(`/api/forms?refKey=${encodeURIComponent(initial.refKey)}`, {
+      const response = await fetch(`/api/ui/forms?refKey=${encodeURIComponent(initial.refKey)}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

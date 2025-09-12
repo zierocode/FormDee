@@ -21,8 +21,8 @@ function errorResponse(message: string, code: number = HTTP_STATUS.BAD_REQUEST) 
  */
 async function handleGet(req: NextRequest) {
   try {
-    // Validate authentication - responses require API or UI key
-    const auth = await withApiAuth(req, 'any')
+    // Validate authentication - responses require API key
+    const auth = await withApiAuth(req, 'api')
     if (!auth.authenticated) {
       return errorResponse(auth.error || ERROR_MESSAGES.UNAUTHORIZED, HTTP_STATUS.UNAUTHORIZED)
     }
@@ -107,8 +107,8 @@ async function handleGet(req: NextRequest) {
  */
 async function handleDelete(req: NextRequest) {
   try {
-    // Validate authentication - responses require API or UI key
-    const auth = await withApiAuth(req, 'any')
+    // Validate authentication - responses require API key
+    const auth = await withApiAuth(req, 'api')
     if (!auth.authenticated) {
       return errorResponse(auth.error || ERROR_MESSAGES.UNAUTHORIZED, HTTP_STATUS.UNAUTHORIZED)
     }

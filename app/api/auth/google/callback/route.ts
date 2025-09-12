@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withApiAuth } from '@/lib/auth-supabase'
 import { exchangeCodeForTokens, getUserInfo } from '@/lib/google-auth'
+import { logger } from '@/lib/logger'
 import { supabase } from '@/lib/supabase'
 
 // Force dynamic rendering since we use headers for auth
@@ -39,7 +40,7 @@ async function handleGet(req: NextRequest) {
     const refKey = state.refKey
 
     if (error) {
-      console.error('[Google OAuth] Authorization error:', error)
+      logger.error('[Google OAuth] Authorization error:', error)
       if (isPopup) {
         return new NextResponse(
           `
@@ -116,10 +117,15 @@ async function handleGet(req: NextRequest) {
         .single()
 
       if (updateError) {
-        console.error('[Google OAuth] Failed to update auth in database:', updateError)
+        logger.error('[Google OAuth] Failed to update auth in database:', updateError)
         throw new Error('Failed to update authentication')
       }
 
+      logger.info('[Google OAuth] Updated existing auth:', {
+        id: updatedAuth.id,
+        email: userInfo.email,
+        refKey,
+      })
       googleAuthId = updatedAuth.id
     } else {
       // Create new auth
@@ -137,23 +143,31 @@ async function handleGet(req: NextRequest) {
         .single()
 
       if (insertError) {
-        console.error('[Google OAuth] Failed to store auth in database:', insertError)
+        logger.error('[Google OAuth] Failed to store auth in database:', insertError)
         throw new Error('Failed to store authentication')
       }
 
+      logger.info('[Google OAuth] Created new auth:', {
+        id: newAuth.id,
+        email: userInfo.email,
+        refKey,
+      })
       googleAuthId = newAuth.id
     }
 
     // Link the Google auth to the specific form if refKey is provided
     if (refKey) {
+      logger.info('[Google OAuth] Linking auth to form:', { refKey, googleAuthId })
       const { error: linkError } = await supabase
         .from('Forms')
         .update({ google_auth_id: googleAuthId })
         .eq('refKey', refKey)
 
       if (linkError) {
-        console.error('[Google OAuth] Failed to link auth to form:', linkError)
+        logger.error('[Google OAuth] Failed to link auth to form:', linkError)
         // Don't throw error here, auth was successful
+      } else {
+        logger.info('[Google OAuth] Successfully linked auth to form:', { refKey, googleAuthId })
       }
     }
 
@@ -182,7 +196,7 @@ async function handleGet(req: NextRequest) {
       return NextResponse.redirect(new URL('/builder?google_auth=success', req.url))
     }
   } catch (error: any) {
-    console.error('[API] Google OAuth callback error:', error)
+    logger.error('[API] Google OAuth callback error:', error)
     return NextResponse.redirect(new URL('/builder?google_auth=error', req.url))
   }
 }

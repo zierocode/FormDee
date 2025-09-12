@@ -5,7 +5,7 @@ import { ERROR_MESSAGES, HTTP_STATUS } from '@/lib/constants'
 async function handlePost(req: NextRequest) {
   try {
     // Validate authentication
-    const auth = await withApiAuth(req, 'any')
+    const auth = await withApiAuth(req, 'api')
 
     if (!auth.authenticated) {
       return NextResponse.json(

@@ -14,7 +14,7 @@ export function useSettings(adminKey?: string) {
     queryFn: async () => {
       // Include admin key in headers if provided
       if (adminKey) {
-        const response = await fetch('/api/settings', {
+        const response = await fetch('/api/ui/settings', {
           headers: {
             'x-admin-key': adminKey,
           },
@@ -51,7 +51,7 @@ export function useUpdateSettings(
     mutationFn: async (settings: Settings) => {
       // Include admin key in headers if provided
       if (adminKey) {
-        const response = await fetch('/api/settings', {
+        const response = await fetch('/api/ui/settings', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -64,7 +64,12 @@ export function useUpdateSettings(
         const data = await response.json()
 
         if (!response.ok) {
-          throw new Error(data.error || 'Failed to update settings')
+          // Handle both string error messages and nested error objects
+          const errorMessage =
+            typeof data.error === 'string'
+              ? data.error
+              : data.error?.message || data.message || 'Failed to update settings'
+          throw new Error(errorMessage)
         }
 
         return data
@@ -94,7 +99,7 @@ export function useTestSettings(
     mutationFn: async (settings: Settings) => {
       // Include admin key in headers if provided
       if (adminKey) {
-        const response = await fetch('/api/settings/test', {
+        const response = await fetch('/api/ui/settings/test', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -110,7 +115,12 @@ export function useTestSettings(
         const data = await response.json()
 
         if (!response.ok) {
-          throw new Error(data.error || 'Configuration test failed')
+          // Handle both string error messages and nested error objects
+          const errorMessage =
+            typeof data.error === 'string'
+              ? data.error
+              : data.error?.message || data.message || 'Configuration test failed'
+          throw new Error(errorMessage)
         }
 
         return data

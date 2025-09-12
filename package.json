@@ -1,6 +1,6 @@
 {
   "name": "formdee",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Production-ready dynamic form builder with AI-powered generation, Google Sheets integration, Supabase backend, and comprehensive testing suite",
   "author": "FormDee Development Team",
   "license": "MIT",
